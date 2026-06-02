@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Retro Townhall Word Cloud</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-cloud/1.2.5/d3.layout.cloud.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -81,7 +78,8 @@
             border: var(--pixel-border);
             box-shadow: 0 0 20px var(--accent-glow);
             background-color: rgba(10, 18, 11, 0.8);
-            position: relative;
+            position: relative; /* 啟用絕對定位子元素的母體基底 */
+            overflow: hidden;
         }
 
         #top-words {
@@ -102,6 +100,7 @@
             position: absolute;
             bottom: 10px;
             right: 10px;
+            z-index: 100;
         }
 
         #mobile-screen {
@@ -181,13 +180,16 @@
         }
 
         @keyframes pixel-pop {
-            0% { transform: scale(0); opacity: 0; }
-            70% { transform: scale(1.1); }
-            100% { transform: scale(1); opacity: 1; }
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            70% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
-        .word-node {
-            animation: pixel-pop 0.35s ease-out both;
-            cursor: pointer;
+        .cloud-word {
+            position: absolute;
+            white-space: nowrap;
+            text-align: center;
+            transform-origin: center;
+            animation: pixel-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
         }
     </style>
 </head>
@@ -214,7 +216,6 @@
     </div>
 
     <script>
-        // --- CONFIGURATION ---
         const SUPABASE_URL = "https://gslpqlnrupulptqntwvz.supabase.co";
         const SUPABASE_KEY = "sb_publishable_qfy-lAoKfieXeU3jkgQ_4A_egK0DSrK";
         
@@ -265,15 +266,12 @@
                 .subscribe();
         }
 
-        // --- VISUALIZATION ENGINE ---
+        // --- 100% 穩定不重疊的雷達放射狀排版引擎 ---
         function renderCloud() {
             const container = document.getElementById('word-cloud-container');
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-
             container.innerHTML = "";
 
-            // 依據字頻從大到小排序
+            // 將資料從大到小嚴格排序
             const wordsArray = Object.keys(wordCounts).map(word => ({
                 text: word,
                 size: wordCounts[word]
@@ -281,107 +279,81 @@
 
             updateLeaderboard(wordsArray);
 
-            if(wordsArray.length === 0) return;
+            if (wordsArray.length === 0) return;
 
-            const maxCount = d3.max(wordsArray, d => d.size);
-            const minCount = d3.min(wordsArray, d => d.size);
-            
-            // 🛠️ 核心優化：動態天花板機制。
-            // 如果目前總詞彙數很少（小於 15 個），最大字體限制在安全的 65px，絕對不擠爆版面。
-            // 當詞彙變多、空間被填滿時，上限會自動解鎖放大到 120px！
-            const wordCountLength = wordsArray.length;
-            const maxFontLimit = wordCountLength < 15 ? 65 : Math.min(120, 60 + wordCountLength * 3);
-            
-            const sizeScale = (maxCount === minCount) 
-                ? () => 40 
-                : d3.scaleLinear().domain([minCount, maxCount]).range([18, maxFontLimit]);
+            const maxCount = wordsArray[0].size;
+            const minCount = wordsArray[wordsArray.length - 1].size;
 
-            const layout = d3.layout.cloud()
-                .size([width, height])
-                .words(wordsArray)
-                .padding(2) // 最安全的緊密排列間距
-                .rotate(() => 0) 
-                .font("'Press Start 2P', monospace")
-                .fontSize(d => sizeScale(d.size))
-                .spiral("archimedean") // 阿基米德引力居中
-                .on("end", draw);
+            wordsArray.forEach((wordObj, index) => {
+                const el = document.createElement('div');
+                el.className = 'cloud-word';
+                el.innerText = wordObj.text;
 
-            layout.start();
+                let fontSize = 24;
+                let color = '#228b22';
+                let textShadow = '2px 2px 0px #000';
+                let leftPercent = 50;
+                let topPercent = 50;
 
-            function draw(words) {
-                // 終極備援：如果 D3 依然放不下（words長度為0或沒有x座標），直接強制進入備援模式，永不全黑！
-                if (words.length === 0 || !words[0].hasOwnProperty('x')) {
-                    fallbackRender(wordsArray, container, maxCount, minCount);
-                    return;
-                }
-
-                // 🛠️ 視覺優化：加強主角光環的顯色與發光特效
-                const getColorAndGlow = (dSize, max, min) => {
-                    if (max === min || dSize === max) {
-                        // 👑 第一名絕對主角：白芯 + 螢光綠超強三層外發光
-                        return { color: '#ffffff', glow: '0 0 10px #39ff14, 0 0 20px #39ff14, 3px 3px 0px #000' };
-                    }
-                    const ratio = (dSize - min) / (max - min);
-                    if (ratio > 0.6) {
-                        // 第二名：高亮螢光綠
-                        return { color: '#39ff14', glow: '0 0 5px rgba(57,255,20,0.5), 2px 2px 0px #000' };
-                    } else if (ratio > 0.2) {
-                        // 一般詞：薄荷嫩綠
-                        return { color: '#98ff98', glow: '2px 2px 0px #000' };
-                    } else {
-                        // 背景詞：低調深綠
-                        return { color: '#228b22', glow: '1px 1px 0px #000' };
-                    }
-                };
-
-                d3.select("#word-cloud-container").append("svg")
-                    .attr("width", layout.size()[0])
-                    .attr("height", layout.size()[1])
-                  .append("g")
-                    .attr("transform", "translate(" + layout.size()[0] / 2 + "," + layout.size()[1] / 2 + ")")
-                  .selectAll("text")
-                    .data(words)
-                  .enter().append("text")
-                    .attr("class", "word-node")
-                    .style("font-size", d => d.size + "px")
-                    .attr("text-anchor", "middle")
-                    .attr("transform", d => "translate(" + [d.x, d.y] + ")")
-                    .style("fill", d => getColorAndGlow(d.size, maxCount, minCount).color)
-                    .style("text-shadow", d => getColorAndGlow(d.size, maxCount, minCount).glow)
-                    .text(d => d.text);
-            }
-        }
-
-        // 彈性備援網格排版系統（保證 100% 呈現畫面）
-        function fallbackRender(words, container, max, min) {
-            container.style.display = "flex";
-            container.style.flexWrap = "wrap";
-            container.style.alignItems = "center";
-            container.style.justifyContent = "center";
-            container.style.padding = "30px";
-            container.style.gap = "20px";
-
-            words.forEach(w => {
-                const span = document.createElement("span");
-                span.className = "word-node";
-                span.innerText = w.text;
-                
-                let size = 20;
-                let color = "#228b22";
-                let shadow = "2px 2px 0px #000";
-
-                if (max === min || w.size === max) {
-                    size = 55; color = "#ffffff"; shadow = "0 0 15px #39ff14, 3px 3px 0px #000";
-                } else if ((w.size - min) / (max - min) > 0.5) {
-                    size = 35; color = "#39ff14"; shadow = "2px 2px 0px #000";
+                // 👑 邏輯 1：如果是最高頻的主角，直接錨定在正中心
+                if (index === 0) {
+                    fontSize = 80; // 統治級大尺寸
+                    color = '#ffffff'; // 白芯
+                    textShadow = '0 0 15px #39ff14, 0 0 30px #39ff14, 4px 4px 0px #000'; // 超強發光
+                    leftPercent = 50;
+                    topPercent = 50;
                 } else {
-                    size = 24; color = "#98ff98";
+                    // 📡 邏輯 2：配角們依照順序，利用雷達軌道半徑與角度公式往外擴散
+                    // 軌道半徑隨數量逐漸加大，角度均勻錯開
+                    let radius;
+                    if (index <= 4) {
+                        radius = 20; // 內圈軌道半徑 (vw/vh)
+                    } else if (index <= 10) {
+                        radius = 32; // 中圈軌道半徑
+                    } else {
+                        radius = 42; // 外圈軌道半徑
+                    }
+
+                    // 均勻分佈角度 (弧度制)
+                    const angle = (index * 135) * (Math.PI / 180); // 使用黃金角度乘積避免在同一直線上
+                    
+                    // 考量到大螢幕是 16:9 寬螢幕，X軸(水平)乘上 1.45 倍係數拉開，避免視覺擁擠
+                    leftPercent = 50 + (radius * Math.cos(angle) * 1.45);
+                    topPercent = 50 + (radius * Math.sin(angle));
+
+                    // 限制邊界防呆，不超出框線
+                    leftPercent = Math.max(12, Math.min(88, leftPercent));
+                    topPercent = Math.max(12, Math.min(88, topPercent));
+
+                    // 計算配角們的字體階層與顏色
+                    if (wordObj.size === maxCount) {
+                        fontSize = 55;
+                        color = '#39ff14';
+                        textShadow = '0 0 8px #39ff14, 3px 3px 0px #000';
+                    } else {
+                        const ratio = maxCount === minCount ? 0 : (wordObj.size - minCount) / (maxCount - minCount);
+                        if (ratio > 0.5) {
+                            fontSize = 38;
+                            color = '#98ff98';
+                            textShadow = '3px 3px 0px #000';
+                        } else if (ratio > 0.1) {
+                            fontSize = 26;
+                            color = '#228b22';
+                        } else {
+                            fontSize = 18;
+                            color = '#0f5213';
+                        }
+                    }
                 }
 
-                span.style.fontSize = size + "px";
-                span.style.color = color;
-                span.style.textShadow = shadow;
-                container.appendChild(span);
+                // 套用絕對定位樣式
+                el.style.fontSize = fontSize + 'px';
+                el.style.color = color;
+                el.style.textShadow = textShadow;
+                el.style.left = leftPercent + '%';
+                el.style.top = topPercent + '%';
+
+                container.appendChild(el);
             });
         }
 
@@ -429,29 +401,4 @@
                 feedback.innerText = "WORD BROADCASTED SUCCESSFULLY!";
                 inputElement.value = "";
                 
-                if(navigator.vibrate) navigator.vibrate(50); 
-            } else {
-                feedback.style.color = "red";
-                feedback.innerText = "TRANSMISSION ERROR.";
-            }
-        }
-
-        async function clearCloud() {
-            if (confirm("Wipe entire database canvas for next round?")) {
-                const { error } = await db
-                    .from('word_cloud')
-                    .delete()
-                    .neq('word', 'placeholder_wiping_trick'); 
-            }
-        }
-
-        function setupMobileInteractions() {
-            document.getElementById('word-input').addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') sendWord();
-            });
-        }
-
-        window.onload = initApp;
-    </script>
-</body>
-</html>
+                if(navigator.vibrate) navigator.vibrate
