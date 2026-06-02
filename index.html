@@ -218,7 +218,8 @@
         const SUPABASE_URL = "https://gslpqlnrupulptqntwvz.supabase.co";
         const SUPABASE_KEY = "sb_publishable_qfy-lAoKfieXeU3jkgQ_4A_egK0DSrK";
         
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // ✅ 修正：改用 db 變數名稱，徹底解決重複宣告引發的 SyntaxError 崩潰問題
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let wordCounts = {};
         let currentRole = "audience";
@@ -239,7 +240,7 @@
         }
 
         async function initAudienceCloud() {
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('word_cloud')
                 .select('word');
             
@@ -251,7 +252,7 @@
                 renderCloud();
             }
 
-            supabase
+            db
                 .channel('schema-db-changes')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'word_cloud' }, payload => {
                     const newWord = payload.new.word.toUpperCase().trim();
@@ -354,13 +355,13 @@
                 return;
             }
 
-            const { error } = await supabase
+            const { error } = await db
                 .from('word_cloud')
                 .insert([{ word: rawWord }]);
 
             if (!error) {
                 localStorage.setItem('last_sub_time', Date.now());
-                feedback.style.color = "#39ff14"; // ✅ 修正：改回標準顏色字串，不再拋錯
+                feedback.style.color = "#39ff14"; 
                 feedback.innerText = "WORD BROADCASTED SUCCESSFULLY!";
                 inputElement.value = "";
                 
@@ -373,7 +374,7 @@
 
         async function clearCloud() {
             if (confirm("Wipe entire database canvas for next round?")) {
-                const { error } = await supabase
+                const { error } = await db
                     .from('word_cloud')
                     .delete()
                     .neq('word', 'placeholder_wiping_trick'); 
