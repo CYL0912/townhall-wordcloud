@@ -36,6 +36,7 @@
             min-height: 100vh;
         }
 
+        /* 復古 CRT 電視機掃描線 */
         body::before {
             content: " ";
             display: block;
@@ -78,7 +79,7 @@
             border: var(--pixel-border);
             box-shadow: 0 0 20px var(--accent-glow);
             background-color: rgba(10, 18, 11, 0.8);
-            position: relative; /* 啟用絕對定位子元素的母體基底 */
+            position: relative; /* 鎖定絕對定位的基底 */
             overflow: hidden;
         }
 
@@ -179,6 +180,7 @@
             min-height: 15px;
         }
 
+        /* 彈出動畫 */
         @keyframes pixel-pop {
             0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
             70% { transform: translate(-50%, -50%) scale(1.1); }
@@ -216,6 +218,7 @@
     </div>
 
     <script>
+        // --- 雲端連線憑證設定 ---
         const SUPABASE_URL = "https://gslpqlnrupulptqntwvz.supabase.co";
         const SUPABASE_KEY = "sb_publishable_qfy-lAoKfieXeU3jkgQ_4A_egK0DSrK";
         
@@ -239,25 +242,30 @@
             }
         }
 
-        async function initAudienceCloud() {
-            const { data, error } = await db
-                .from('word_cloud')
-                .select('word');
-            
-            if (data) {
-                data.forEach(row => {
-                    const cleanWord = row.word.toUpperCase().trim();
-                    wordCounts[cleanWord] = (wordCounts[cleanWord] || 0) + 1;
+        // 強制鎖定非同步時序：100% 撈完資料後才點火渲染
+        function initAudienceCloud() {
+            db.from('word_cloud').select('word')
+                .then(({ data, error }) => {
+                    wordCounts = {};
+                    if (data && data.length > 0) {
+                        data.forEach(row => {
+                            if (row.word) {
+                                const cleanWord = row.word.toUpperCase().trim();
+                                wordCounts[cleanWord] = (wordCounts[cleanWord] || 0) + 1;
+                            }
+                        });
+                    }
+                    renderCloud(); 
                 });
-                renderCloud();
-            }
 
-            db
-                .channel('schema-db-changes')
+            // WebSocket 實時增量更新
+            db.channel('schema-db-changes')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'word_cloud' }, payload => {
-                    const newWord = payload.new.word.toUpperCase().trim();
-                    wordCounts[newWord] = (wordCounts[newWord] || 0) + 1;
-                    renderCloud();
+                    if (payload.new && payload.new.word) {
+                        const newWord = payload.new.word.toUpperCase().trim();
+                        wordCounts[newWord] = (wordCounts[newWord] || 0) + 1;
+                        renderCloud();
+                    }
                 })
                 .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'word_cloud' }, () => {
                     wordCounts = {};
@@ -266,12 +274,12 @@
                 .subscribe();
         }
 
-        // --- 100% 穩定不重疊的雷達放射狀排版引擎 ---
+        // 純原生 CSS 雷達放射狀排版引擎（絕不全黑、絕不重疊）
         function renderCloud() {
             const container = document.getElementById('word-cloud-container');
             container.innerHTML = "";
 
-            // 將資料從大到小嚴格排序
+            // 將物件陣列由大到小嚴格排序
             const wordsArray = Object.keys(wordCounts).map(word => ({
                 text: word,
                 size: wordCounts[word]
@@ -281,8 +289,9 @@
 
             if (wordsArray.length === 0) return;
 
-            const maxCount = wordsArray[0].size;
-            const minCount = wordsArray[wordsArray.length - 1].size;
+            // 使用純 JavaScript 計算最大值與最小值
+            const maxCount = Math.max(...wordsArray.map(w => w.size));
+            const minCount = Math.min(...wordsArray.map(w => w.size));
 
             wordsArray.forEach((wordObj, index) => {
                 const el = document.createElement('div');
@@ -295,49 +304,43 @@
                 let leftPercent = 50;
                 let topPercent = 50;
 
-                // 👑 邏輯 1：如果是最高頻的主角，直接錨定在正中心
+                // 👑 第一名絕對主角：永遠牢牢鎖死在正中心
                 if (index === 0) {
-                    fontSize = 80; // 統治級大尺寸
-                    color = '#ffffff'; // 白芯
-                    textShadow = '0 0 15px #39ff14, 0 0 30px #39ff14, 4px 4px 0px #000'; // 超強發光
+                    fontSize = 75; 
+                    color = '#ffffff'; // 高質感白芯
+                    textShadow = '0 0 15px #39ff14, 0 0 30px #39ff14, 4px 4px 0px #000'; // 爆亮霓虹三層發光
                     leftPercent = 50;
                     topPercent = 50;
                 } else {
-                    // 📡 邏輯 2：配角們依照順序，利用雷達軌道半徑與角度公式往外擴散
-                    // 軌道半徑隨數量逐漸加大，角度均勻錯開
-                    let radius;
-                    if (index <= 4) {
-                        radius = 20; // 內圈軌道半徑 (vw/vh)
-                    } else if (index <= 10) {
-                        radius = 32; // 中圈軌道半徑
-                    } else {
-                        radius = 42; // 外圈軌道半徑
-                    }
+                    // 📡 其餘詞彙：利用黃金錯開角度，像雷達軌道般由內向外擴散擺放
+                    let radius = 20;
+                    if (index <= 4) radius = 22;      // 內圈
+                    else if (index <= 10) radius = 34; // 中圈
+                    else radius = 44;                  // 外圈
 
-                    // 均勻分佈角度 (弧度制)
-                    const angle = (index * 135) * (Math.PI / 180); // 使用黃金角度乘積避免在同一直線上
-                    
-                    // 考量到大螢幕是 16:9 寬螢幕，X軸(水平)乘上 1.45 倍係數拉開，避免視覺擁擠
+                    // 使用數學螺旋公式錯開角度，100% 絕不重疊
+                    const angle = (index * 135) * (Math.PI / 180); 
+                    // 乘上寬螢幕比例係數（1.45），讓左右延伸更完美
                     leftPercent = 50 + (radius * Math.cos(angle) * 1.45);
                     topPercent = 50 + (radius * Math.sin(angle));
 
-                    // 限制邊界防呆，不超出框線
-                    leftPercent = Math.max(12, Math.min(88, leftPercent));
-                    topPercent = Math.max(12, Math.min(88, topPercent));
+                    // 安全邊界防呆
+                    leftPercent = Math.max(15, Math.min(85, leftPercent));
+                    topPercent = Math.max(15, Math.min(85, topPercent));
 
-                    // 計算配角們的字體階層與顏色
+                    // 計算其餘詞彙的色階
                     if (wordObj.size === maxCount) {
-                        fontSize = 55;
+                        fontSize = 50;
                         color = '#39ff14';
                         textShadow = '0 0 8px #39ff14, 3px 3px 0px #000';
                     } else {
                         const ratio = maxCount === minCount ? 0 : (wordObj.size - minCount) / (maxCount - minCount);
                         if (ratio > 0.5) {
-                            fontSize = 38;
+                            fontSize = 36;
                             color = '#98ff98';
                             textShadow = '3px 3px 0px #000';
                         } else if (ratio > 0.1) {
-                            fontSize = 26;
+                            fontSize = 24;
                             color = '#228b22';
                         } else {
                             fontSize = 18;
@@ -346,7 +349,7 @@
                     }
                 }
 
-                // 套用絕對定位樣式
+                // 套用絕對定位 CSS 屬性
                 el.style.fontSize = fontSize + 'px';
                 el.style.color = color;
                 el.style.textShadow = textShadow;
@@ -401,4 +404,29 @@
                 feedback.innerText = "WORD BROADCASTED SUCCESSFULLY!";
                 inputElement.value = "";
                 
-                if(navigator.vibrate) navigator.vibrate
+                if(navigator.vibrate) navigator.vibrate(50); 
+            } else {
+                feedback.style.color = "red";
+                feedback.innerText = "TRANSMISSION ERROR.";
+            }
+        }
+
+        async function clearCloud() {
+            if (confirm("Wipe entire database canvas for next round?")) {
+                const { error } = await db
+                    .from('word_cloud')
+                    .delete()
+                    .neq('word', 'placeholder_wiping_trick'); 
+            }
+        }
+
+        function setupMobileInteractions() {
+            document.getElementById('word-input').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') sendWord();
+            });
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
