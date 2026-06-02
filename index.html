@@ -265,7 +265,7 @@
                 .subscribe();
         }
 
-        // --- VISUALIZATION ENGINE (D3-Cloud 進階版) ---
+        // --- VISUALIZATION ENGINE ---
         function renderCloud() {
             const container = document.getElementById('word-cloud-container');
             const width = container.clientWidth;
@@ -273,7 +273,7 @@
 
             container.innerHTML = "";
 
-            // 優化 1：先將資料從大到小排序，確保演算法能讓最高頻的字先卡住「正中心」
+            // 排序資料：高頻字優先計算
             const wordsArray = Object.keys(wordCounts).map(word => ({
                 text: word,
                 size: wordCounts[word]
@@ -286,40 +286,43 @@
             const maxCount = d3.max(wordsArray, d => d.size);
             const minCount = d3.min(wordsArray, d => d.size);
             
-            // 放大字體級距 (最小 20px 到 最大 90px)，讓主角更粗大耀眼
+            // ✅ 修正：調整字體級距範圍（18px 到 65px），保證安全不爆版
             const sizeScale = (maxCount === minCount) 
-                ? () => 50 
-                : d3.scaleLinear().domain([minCount, maxCount]).range([20, 90]);
+                ? () => 40 
+                : d3.scaleLinear().domain([minCount, maxCount]).range([18, 65]);
 
             const layout = d3.layout.cloud()
                 .size([width, height])
                 .words(wordsArray)
-                .padding(15) 
+                .padding(4) // ✅ 修正：縮小間距為安全的 4px，留空間給長數字
                 .rotate(() => 0) 
                 .font("'Press Start 2P'")
                 .fontSize(d => sizeScale(d.size))
-                // 優化 2：改用 Archimedean 螺旋引力演算法，最大字必定鎖死在中心點
-                .spiral("archimedean") 
+                .spiral("archimedean") // 強制大字往正中心靠攏
                 .on("end", draw);
 
             layout.start();
 
             function draw(words) {
-                // 優化 3：建立色階矩陣（字頻越高、霓虹發光度越亮）
+                // 如果演算法計算失敗（爆版防呆），強制降級渲染，絕對不留黑畫面
+                if (words.length === 0 || !words[0].hasOwnProperty('x')) {
+                    console.warn("D3 Cloud placement failed, rolling back to safe mode.");
+                    fallbackRender(wordsArray, container, maxCount, minCount);
+                    return;
+                }
+
+                const colors = ['#39ff14', '#98ff98', '#0f5213', '#228b22', '#adff2f'];
+
                 const getColorAndGlow = (dSize, max, min) => {
                     if (max === min || dSize === max) {
-                        // 絕對的主角：最亮螢光綠 + 超強發光陰影
-                        return { color: '#39ff14', glow: '0 0 15px #39ff14, 3px 3px 0px #000' };
+                        return { color: '#39ff14', glow: '0 0 12px #39ff14, 3px 3px 0px #000' };
                     }
                     const ratio = (dSize - min) / (max - min);
                     if (ratio > 0.6) {
-                        // 次要配角：亮薄荷綠
                         return { color: '#98ff98', glow: '0 0 5px rgba(152,255,152,0.5), 3px 3px 0px #000' };
                     } else if (ratio > 0.3) {
-                        // 一般詞彙：中度草綠
                         return { color: '#228b22', glow: '3px 3px 0px #000' };
                     } else {
-                        // 邊緣低頻詞：最暗的背景綠
                         return { color: '#0f5213', glow: '2px 2px 0px #000' };
                     }
                 };
@@ -336,11 +339,41 @@
                     .style("font-size", d => d.size + "px")
                     .attr("text-anchor", "middle")
                     .attr("transform", d => "translate(" + [d.x, d.y] + ")")
-                    // 動態注入優化後的顏色與陰影
                     .style("fill", d => getColorAndGlow(d.size, maxCount, minCount).color)
                     .style("text-shadow", d => getColorAndGlow(d.size, maxCount, minCount).glow)
                     .text(d => d.text);
             }
+        }
+
+        // 🛠️ 終極防呆備援方案：如果字體太大放不下，改用彈性 Flex 排版，絕對不留黑畫面！
+        function fallbackRender(words, container, max, min) {
+            container.style.display = "flex";
+            container.style.flexWrap = "wrap";
+            container.style.alignItems = "center";
+            container.style.justifyContent = "center";
+            container.style.padding = "20px";
+            container.style.gap = "15px";
+
+            words.forEach(w => {
+                const span = document.createElement("span");
+                span.className = "word-node";
+                span.innerText = w.text;
+                
+                let size = 20;
+                let color = "#228b22";
+                let shadow = "2px 2px 0px #000";
+
+                if (max === min || w.size === max) {
+                    size = 55; color = "#39ff14"; shadow = "0 0 10px #39ff14, 3px 3px 0px #000";
+                } else if ((w.size - min) / (max - min) > 0.5) {
+                    size = 35; color = "#98ff98"; shadow = "3px 3px 0px #000";
+                }
+
+                span.style.fontSize = size + "px";
+                span.style.color = color;
+                span.style.textShadow = shadow;
+                container.appendChild(span);
+            });
         }
 
         function updateLeaderboard(wordsArray) {
@@ -386,3 +419,30 @@
                 feedback.style.color = "#39ff14"; 
                 feedback.innerText = "WORD BROADCASTED SUCCESSFULLY!";
                 inputElement.value = "";
+                
+                if(navigator.vibrate) navigator.vibrate(50); 
+            } else {
+                feedback.style.color = "red";
+                feedback.innerText = "TRANSMISSION ERROR.";
+            }
+        }
+
+        async function clearCloud() {
+            if (confirm("Wipe entire database canvas for next round?")) {
+                const { error } = await db
+                    .from('word_cloud')
+                    .delete()
+                    .neq('word', 'placeholder_wiping_trick'); 
+            }
+        }
+
+        function setupMobileInteractions() {
+            document.getElementById('word-input').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') sendWord();
+            });
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
