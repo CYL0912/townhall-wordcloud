@@ -182,14 +182,14 @@
 
         @keyframes pixel-pop {
             0% { transform: scale(0); opacity: 0; }
-            70% { transform: scale(1.15); }
+            70% { transform: scale(1.1); }
             100% { transform: scale(1); opacity: 1; }
         }
         .word-node {
-            animation: pixel-pop 0.4s ease-out;
+            animation: pixel-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
             cursor: pointer;
         }
-    </style>
+    </script>
 </head>
 <body>
 
@@ -214,7 +214,6 @@
     </div>
 
     <script>
-        // --- CONFIGURATION ---
         const SUPABASE_URL = "https://gslpqlnrupulptqntwvz.supabase.co";
         const SUPABASE_KEY = "sb_publishable_qfy-lAoKfieXeU3jkgQ_4A_egK0DSrK";
         
@@ -234,7 +233,11 @@
             } else {
                 currentRole = "audience";
                 document.getElementById('audience-screen').classList.add('active');
-                initAudienceCloud();
+                
+                // 🛠️ 優化：確保 8-bit 字型完全被瀏覽器加載完畢後，才點火執行資料庫與 D3 運算
+                document.fonts.ready.then(() => {
+                    initAudienceCloud();
+                });
             }
         }
 
@@ -265,7 +268,6 @@
                 .subscribe();
         }
 
-        // --- VISUALIZATION ENGINE ---
         function renderCloud() {
             const container = document.getElementById('word-cloud-container');
             const width = container.clientWidth;
@@ -273,7 +275,7 @@
 
             container.innerHTML = "";
 
-            // 排序資料：高頻字優先計算
+            // 嚴格依據字頻從大到小排序，第一名將絕對擁有最核心的放置優先權
             const wordsArray = Object.keys(wordCounts).map(word => ({
                 text: word,
                 size: wordCounts[word]
@@ -286,44 +288,42 @@
             const maxCount = d3.max(wordsArray, d => d.size);
             const minCount = d3.min(wordsArray, d => d.size);
             
-            // ✅ 修正：調整字體級距範圍（18px 到 65px），保證安全不爆版
+            // 🛠️ 優化：將字體最大上限暴增至 180px，拉大主角與配角之間的體積代差！
             const sizeScale = (maxCount === minCount) 
-                ? () => 40 
-                : d3.scaleLinear().domain([minCount, maxCount]).range([18, 65]);
+                ? () => 60 
+                : d3.scaleLinear().domain([minCount, maxCount]).range([22, 180]);
 
             const layout = d3.layout.cloud()
                 .size([width, height])
                 .words(wordsArray)
-                .padding(4) // ✅ 修正：縮小間距為安全的 4px，留空間給長數字
+                .padding(3) // 縮小間距，給予大字極度寬容的碰撞防守空間
                 .rotate(() => 0) 
                 .font("'Press Start 2P'")
                 .fontSize(d => sizeScale(d.size))
-                .spiral("archimedean") // 強制大字往正中心靠攏
+                .spiral("archimedean") // 強力重心引力機制
                 .on("end", draw);
 
             layout.start();
 
             function draw(words) {
-                // 如果演算法計算失敗（爆版防呆），強制降級渲染，絕對不留黑畫面
+                // 如果 D3 碰撞引擎計算失敗（大字放不下），自動進入降級緊急渲染模式，絕對不全黑
                 if (words.length === 0 || !words[0].hasOwnProperty('x')) {
-                    console.warn("D3 Cloud placement failed, rolling back to safe mode.");
                     fallbackRender(wordsArray, container, maxCount, minCount);
                     return;
                 }
 
-                const colors = ['#39ff14', '#98ff98', '#0f5213', '#228b22', '#adff2f'];
-
                 const getColorAndGlow = (dSize, max, min) => {
                     if (max === min || dSize === max) {
-                        return { color: '#39ff14', glow: '0 0 12px #39ff14, 3px 3px 0px #000' };
+                        // 👑 最高頻主角：加強版暴亮螢光綠與巨型外發光
+                        return { color: '#39ff14', glow: '0 0 25px #39ff14, 4px 4px 0px #000', weight: '900' };
                     }
                     const ratio = (dSize - min) / (max - min);
                     if (ratio > 0.6) {
-                        return { color: '#98ff98', glow: '0 0 5px rgba(152,255,152,0.5), 3px 3px 0px #000' };
-                    } else if (ratio > 0.3) {
-                        return { color: '#228b22', glow: '3px 3px 0px #000' };
+                        return { color: '#98ff98', glow: '0 0 8px rgba(152,255,152,0.6), 3px 3px 0px #000', weight: 'bold' };
+                    } else if (ratio > 0.2) {
+                        return { color: '#228b22', glow: '3px 3px 0px #000', weight: 'normal' };
                     } else {
-                        return { color: '#0f5213', glow: '2px 2px 0px #000' };
+                        return { color: '#0f5213', glow: '2px 2px 0px #000', weight: 'normal' };
                     }
                 };
 
@@ -341,32 +341,32 @@
                     .attr("transform", d => "translate(" + [d.x, d.y] + ")")
                     .style("fill", d => getColorAndGlow(d.size, maxCount, minCount).color)
                     .style("text-shadow", d => getColorAndGlow(d.size, maxCount, minCount).glow)
+                    .style("font-weight", d => getColorAndGlow(d.size, maxCount, minCount).weight)
                     .text(d => d.text);
             }
         }
 
-        // 🛠️ 終極防呆備援方案：如果字體太大放不下，改用彈性 Flex 排版，絕對不留黑畫面！
         function fallbackRender(words, container, max, min) {
             container.style.display = "flex";
             container.style.flexWrap = "wrap";
             container.style.alignItems = "center";
             container.style.justifyContent = "center";
             container.style.padding = "20px";
-            container.style.gap = "15px";
+            container.style.gap = "20px";
 
             words.forEach(w => {
                 const span = document.createElement("span");
                 span.className = "word-node";
                 span.innerText = w.text;
                 
-                let size = 20;
+                let size = 22;
                 let color = "#228b22";
                 let shadow = "2px 2px 0px #000";
 
                 if (max === min || w.size === max) {
-                    size = 55; color = "#39ff14"; shadow = "0 0 10px #39ff14, 3px 3px 0px #000";
+                    size = 75; color = "#39ff14"; shadow = "0 0 20px #39ff14, 4px 4px 0px #000";
                 } else if ((w.size - min) / (max - min) > 0.5) {
-                    size = 35; color = "#98ff98"; shadow = "3px 3px 0px #000";
+                    size = 45; color = "#98ff98"; shadow = "3px 3px 0px #000";
                 }
 
                 span.style.fontSize = size + "px";
@@ -422,27 +422,4 @@
                 
                 if(navigator.vibrate) navigator.vibrate(50); 
             } else {
-                feedback.style.color = "red";
-                feedback.innerText = "TRANSMISSION ERROR.";
-            }
-        }
-
-        async function clearCloud() {
-            if (confirm("Wipe entire database canvas for next round?")) {
-                const { error } = await db
-                    .from('word_cloud')
-                    .delete()
-                    .neq('word', 'placeholder_wiping_trick'); 
-            }
-        }
-
-        function setupMobileInteractions() {
-            document.getElementById('word-input').addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') sendWord();
-            });
-        }
-
-        window.onload = initApp;
-    </script>
-</body>
-</html>
+                feedback
