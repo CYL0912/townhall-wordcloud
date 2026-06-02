@@ -4,19 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Retro Townhall Word Cloud</title>
-    <!-- 引入極具 8-bit 街機感的像素字型 -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     
-    <!-- 核心相依套件：D3.js, D3-Cloud 文字雲演算, 與 Supabase SDK -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-cloud/1.2.5/d3.layout.cloud.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        /* --- 視覺系統與復古 8-Bit 風格定義 (綠色矩陣主題) --- */
         :root {
             --bg-dark: #0a120b;
-            --primary-green: #39ff14; /* 螢光霓虹綠 */
+            --primary-green: #39ff14; 
             --dark-green: #0f5213;
             --mint-green: #98ff98;
             --accent-glow: rgba(57, 255, 20, 0.4);
@@ -26,7 +23,6 @@
         * {
             box-sizing: border-box;
             font-family: 'Press Start 2P', monospace;
-            /* 讓像素縮放時保持銳利，不模糊 */
             image-rendering: pixelated;
         }
 
@@ -43,7 +39,6 @@
             min-height: 100vh;
         }
 
-        /* 模擬 CRT 復古電視機的掃描線（Scanlines）特效 */
         body::before {
             content: " ";
             display: block;
@@ -69,7 +64,6 @@
             justify-content: center;
         }
 
-        /* --- 1. 現場投影大螢幕 (Audience Screen) 樣式 --- */
         #audience-screen {
             position: relative;
         }
@@ -90,7 +84,6 @@
             position: relative;
         }
 
-        /* Top 5 排行榜樣式 */
         #top-words {
             margin-top: 15px;
             font-size: 0.65rem;
@@ -105,14 +98,12 @@
             border: 2px solid var(--primary-green);
         }
 
-        /* 管理端重設按鈕位置 */
         #admin-panel {
             position: absolute;
             bottom: 10px;
             right: 10px;
         }
 
-        /* --- 2. 手機輸入端 (Mobile Screen) 樣式 --- */
         #mobile-screen {
             justify-content: flex-start;
             padding-top: 20%;
@@ -189,7 +180,6 @@
             min-height: 15px;
         }
 
-        /* --- 仿遊戲字體彈出動畫 (Pop-in Effect) --- */
         @keyframes pixel-pop {
             0% { transform: scale(0); opacity: 0; }
             70% { transform: scale(1.15); }
@@ -203,7 +193,6 @@
 </head>
 <body>
 
-    <!-- 介面 1: 現場投影大螢幕 -->
     <div id="audience-screen" class="screen">
         <h1>[ RETRO TOWNHALL CLOUD ]</h1>
         <div id="word-cloud-container"></div>
@@ -214,7 +203,6 @@
         </div>
     </div>
 
-    <!-- 介面 2: 手機端輸入介面 -->
     <div id="mobile-screen" class="screen">
         <div class="card">
             <h1>ENTER WORD</h1>
@@ -226,22 +214,19 @@
     </div>
 
     <script>
-        // --- 帳號憑證設定 (已為你替換為你專屬的連線金鑰) ---
+        // --- 帳號憑證設定 ---
         const SUPABASE_URL = "https://gslpqlnrupulptqntwvz.supabase.co";
         const SUPABASE_KEY = "sb_publishable_qfy-lAoKfieXeU3jkgQ_4A_egK0DSrK";
         
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 全域狀態快取
         let wordCounts = {};
         let currentRole = "audience";
 
-        // --- 路由分配與自動偵測 ---
         function initApp() {
             const urlParams = new URLSearchParams(window.location.search);
             const role = urlParams.get('role');
             
-            // 如果網址帶有 ?role=mobile，或是系統偵測為行動裝置（且無強制指定 tv 參數），則載入手機版
             if (role === 'mobile' || /Mobi|Android|iPhone/i.test(navigator.userAgent) && role !== 'tv') {
                 currentRole = "mobile";
                 document.getElementById('mobile-screen').classList.add('active');
@@ -253,9 +238,7 @@
             }
         }
 
-        // --- 資料庫同步與即時 WebSockets 監聽 ---
         async function initAudienceCloud() {
-            // 1. 初始化讀取：抓取資料庫現有的所有單字
             const { data, error } = await supabase
                 .from('word_cloud')
                 .select('word');
@@ -268,47 +251,39 @@
                 renderCloud();
             }
 
-            // 2. 開啟即時動態監聽 (Realtime WebSockets)
             supabase
                 .channel('schema-db-changes')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'word_cloud' }, payload => {
                     const newWord = payload.new.word.toUpperCase().trim();
                     wordCounts[newWord] = (wordCounts[newWord] || 0) + 1;
-                    renderCloud(); // 有人輸入新字，即時重新渲染
+                    renderCloud();
                 })
                 .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'word_cloud' }, () => {
-                    // 點擊 Reset 時觸發
                     wordCounts = {};
                     renderCloud();
                 })
                 .subscribe();
         }
 
-        // --- 文字雲渲染引擎 (D3-Cloud) ---
         function renderCloud() {
             const container = document.getElementById('word-cloud-container');
             const width = container.clientWidth;
             const height = container.clientHeight;
 
-            // 清空舊的 SVG 畫布
             container.innerHTML = "";
 
-            // 將物件格式轉為 D3 所需的陣列格式
             const wordsArray = Object.keys(wordCounts).map(word => ({
                 text: word,
                 size: wordCounts[word]
             }));
 
-            // 更新 Top 5 排行榜
             updateLeaderboard(wordsArray);
 
             if(wordsArray.length === 0) return;
 
-            // 計算字頻最大與最小值，動態映射字體大小
             const maxCount = d3.max(wordsArray, d => d.size);
             const minCount = d3.min(wordsArray, d => d.size);
             
-            // 防呆機制：如果最大與最小相同（例如剛開局只有一個詞），固定設定為 40px，避免除以零錯誤
             const sizeScale = (maxCount === minCount) 
                 ? () => 40 
                 : d3.scaleLinear().domain([minCount, maxCount]).range([18, 70]);
@@ -316,8 +291,8 @@
             const layout = d3.layout.cloud()
                 .size([width, height])
                 .words(wordsArray)
-                .padding(12) // 保持像素字體塊狀之間的間距，避免重疊
-                .rotate(() => 0) // 嚴格採用 0 度不旋轉，確保最傳統的 8-bit 電玩 UI 對齊感
+                .padding(12) 
+                .rotate(() => 0) 
                 .font("'Press Start 2P'")
                 .fontSize(d => sizeScale(d.size))
                 .on("end", draw);
@@ -325,7 +300,6 @@
             layout.start();
 
             function draw(words) {
-                // 配色矩陣：深淺不同的綠色調，讓視覺有層次
                 const colors = ['#39ff14', '#98ff98', '#0f5213', '#228b22', '#adff2f'];
 
                 d3.select("#word-cloud-container").append("svg")
@@ -336,17 +310,16 @@
                   .selectAll("text")
                     .data(words)
                   .enter().append("text")
-                    .attr("class", "word-node") // 套用彈出動畫
-                    .style("font-size", d => d.size + "px") // 直接套用 D3 Cloud 計算好的 size 數值
+                    .attr("class", "word-node")
+                    .style("font-size", d => d.size + "px")
                     .style("fill", () => colors[Math.floor(Math.random() * colors.length)])
-                    .style("text-shadow", "3px 3px 0px #000") // 黑色像素陰影
+                    .style("text-shadow", "3px 3px 0px #000")
                     .attr("text-anchor", "middle")
                     .attr("transform", d => "translate(" + [d.x, d.y] + ")")
                     .text(d => d.text);
             }
         }
 
-        // 更新大螢幕下方的 Top 5 熱門詞彙
         function updateLeaderboard(wordsArray) {
             const topContainer = document.getElementById('top-words');
             const sorted = [...wordsArray].sort((a, b) => b.size - a.size).slice(0, 5);
@@ -359,7 +332,6 @@
             topContainer.innerHTML = "TOP 5: " + sorted.map(w => `<span class="top-tag">${w.text} (${w.size})</span>`).join(" ");
         }
 
-        // --- 手機端發送與防洗版邏輯 ---
         async function sendWord() {
             const inputElement = document.getElementById('word-input');
             const feedback = document.getElementById('feedback-msg');
@@ -367,16 +339,14 @@
 
             if (!rawWord) return;
             
-            // 限制防呆：不可超過兩個詞（利用空格判斷）
             if (rawWord.split(/\s+/).length > 2) {
                 feedback.style.color = "red";
                 feedback.innerText = "CRITICAL: MAX 2 WORDS!";
                 return;
             }
 
-            // 用戶端防洗版：檢查 LocalStorage 時間戳記
             const lastSubmissionTime = localStorage.getItem('last_sub_time');
-            const cooldownPeriod = 5000; // 5 秒冷卻時間
+            const cooldownPeriod = 5000; 
 
             if (lastSubmissionTime && (Date.now() - lastSubmissionTime < cooldownPeriod)) {
                 feedback.style.color = "yellow";
@@ -384,18 +354,16 @@
                 return;
             }
 
-            // 發送資料至 Supabase
             const { error } = await supabase
                 .from('word_cloud')
                 .insert([{ word: rawWord }]);
 
             if (!error) {
                 localStorage.setItem('last_sub_time', Date.now());
-                feedback.style.color = "#39ff14"; // 成功提示字改為螢光綠字串
+                feedback.style.color = "#39ff14"; // ✅ 修正：改回標準顏色字串，不再拋錯
                 feedback.innerText = "WORD BROADCASTED SUCCESSFULLY!";
                 inputElement.value = "";
                 
-                // 行動裝置震動回饋（加強街機點擊的打擊感）
                 if(navigator.vibrate) navigator.vibrate(50); 
             } else {
                 feedback.style.color = "red";
@@ -403,24 +371,21 @@
             }
         }
 
-        // 清空重設功能（供主持人/後台使用）
         async function clearCloud() {
             if (confirm("Wipe entire database canvas for next round?")) {
                 const { error } = await supabase
                     .from('word_cloud')
                     .delete()
-                    .neq('word', 'placeholder_wiping_trick'); // 刪除所有內容的標準語法
+                    .neq('word', 'placeholder_wiping_trick'); 
             }
         }
 
         function setupMobileInteractions() {
-            // 支援虛擬鍵盤直接按 Enter 發送
             document.getElementById('word-input').addEventListener('keypress', function (e) {
                 if (e.key === 'Enter') sendWord();
             });
         }
 
-        // 啟動點火
         window.onload = initApp;
     </script>
 </body>
