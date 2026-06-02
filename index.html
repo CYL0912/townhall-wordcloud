@@ -214,11 +214,10 @@
     </div>
 
     <script>
-        // --- 帳號憑證設定 ---
+        // --- CONFIGURATION ---
         const SUPABASE_URL = "https://gslpqlnrupulptqntwvz.supabase.co";
         const SUPABASE_KEY = "sb_publishable_qfy-lAoKfieXeU3jkgQ_4A_egK0DSrK";
         
-        // ✅ 修正：改用 db 變數名稱，徹底解決重複宣告引發的 SyntaxError 崩潰問題
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let wordCounts = {};
@@ -266,6 +265,7 @@
                 .subscribe();
         }
 
+        // --- VISUALIZATION ENGINE (D3-Cloud 進階版) ---
         function renderCloud() {
             const container = document.getElementById('word-cloud-container');
             const width = container.clientWidth;
@@ -273,10 +273,11 @@
 
             container.innerHTML = "";
 
+            // 優化 1：先將資料從大到小排序，確保演算法能讓最高頻的字先卡住「正中心」
             const wordsArray = Object.keys(wordCounts).map(word => ({
                 text: word,
                 size: wordCounts[word]
-            }));
+            })).sort((a, b) => b.size - a.size);
 
             updateLeaderboard(wordsArray);
 
@@ -285,23 +286,43 @@
             const maxCount = d3.max(wordsArray, d => d.size);
             const minCount = d3.min(wordsArray, d => d.size);
             
+            // 放大字體級距 (最小 20px 到 最大 90px)，讓主角更粗大耀眼
             const sizeScale = (maxCount === minCount) 
-                ? () => 40 
-                : d3.scaleLinear().domain([minCount, maxCount]).range([18, 70]);
+                ? () => 50 
+                : d3.scaleLinear().domain([minCount, maxCount]).range([20, 90]);
 
             const layout = d3.layout.cloud()
                 .size([width, height])
                 .words(wordsArray)
-                .padding(12) 
+                .padding(15) 
                 .rotate(() => 0) 
                 .font("'Press Start 2P'")
                 .fontSize(d => sizeScale(d.size))
+                // 優化 2：改用 Archimedean 螺旋引力演算法，最大字必定鎖死在中心點
+                .spiral("archimedean") 
                 .on("end", draw);
 
             layout.start();
 
             function draw(words) {
-                const colors = ['#39ff14', '#98ff98', '#0f5213', '#228b22', '#adff2f'];
+                // 優化 3：建立色階矩陣（字頻越高、霓虹發光度越亮）
+                const getColorAndGlow = (dSize, max, min) => {
+                    if (max === min || dSize === max) {
+                        // 絕對的主角：最亮螢光綠 + 超強發光陰影
+                        return { color: '#39ff14', glow: '0 0 15px #39ff14, 3px 3px 0px #000' };
+                    }
+                    const ratio = (dSize - min) / (max - min);
+                    if (ratio > 0.6) {
+                        // 次要配角：亮薄荷綠
+                        return { color: '#98ff98', glow: '0 0 5px rgba(152,255,152,0.5), 3px 3px 0px #000' };
+                    } else if (ratio > 0.3) {
+                        // 一般詞彙：中度草綠
+                        return { color: '#228b22', glow: '3px 3px 0px #000' };
+                    } else {
+                        // 邊緣低頻詞：最暗的背景綠
+                        return { color: '#0f5213', glow: '2px 2px 0px #000' };
+                    }
+                };
 
                 d3.select("#word-cloud-container").append("svg")
                     .attr("width", layout.size()[0])
@@ -313,10 +334,11 @@
                   .enter().append("text")
                     .attr("class", "word-node")
                     .style("font-size", d => d.size + "px")
-                    .style("fill", () => colors[Math.floor(Math.random() * colors.length)])
-                    .style("text-shadow", "3px 3px 0px #000")
                     .attr("text-anchor", "middle")
                     .attr("transform", d => "translate(" + [d.x, d.y] + ")")
+                    // 動態注入優化後的顏色與陰影
+                    .style("fill", d => getColorAndGlow(d.size, maxCount, minCount).color)
+                    .style("text-shadow", d => getColorAndGlow(d.size, maxCount, minCount).glow)
                     .text(d => d.text);
             }
         }
@@ -364,30 +386,3 @@
                 feedback.style.color = "#39ff14"; 
                 feedback.innerText = "WORD BROADCASTED SUCCESSFULLY!";
                 inputElement.value = "";
-                
-                if(navigator.vibrate) navigator.vibrate(50); 
-            } else {
-                feedback.style.color = "red";
-                feedback.innerText = "TRANSMISSION ERROR.";
-            }
-        }
-
-        async function clearCloud() {
-            if (confirm("Wipe entire database canvas for next round?")) {
-                const { error } = await db
-                    .from('word_cloud')
-                    .delete()
-                    .neq('word', 'placeholder_wiping_trick'); 
-            }
-        }
-
-        function setupMobileInteractions() {
-            document.getElementById('word-input').addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') sendWord();
-            });
-        }
-
-        window.onload = initApp;
-    </script>
-</body>
-</html>
