@@ -72,7 +72,7 @@
         }
 
         h1 {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             text-align: center;
             text-shadow: 0 0 10px var(--accent-glow);
             margin-bottom: 10px;
@@ -90,9 +90,11 @@
         /* Leaderboard styling */
         #top-words {
             margin-top: 15px;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             display: flex;
             gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         .top-tag {
             background: var(--dark-green);
@@ -124,7 +126,7 @@
         }
 
         .instruction {
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             line-height: 1.5;
             margin-bottom: 25px;
             color: var(--mint-green);
@@ -152,7 +154,7 @@
             color: white;
             border: 4px solid #fff;
             padding: 12px 24px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             cursor: pointer;
             box-shadow: 4px 4px 0px #fff;
             transition: transform 0.1s;
@@ -187,7 +189,7 @@
         /* --- RETRO ANIMATIONS --- */
         @keyframes pixel-pop {
             0% { transform: scale(0); opacity: 0; }
-            50% { transform: scale(1.2); }
+            70% { transform: scale(1.15); }
             100% { transform: scale(1); opacity: 1; }
         }
         .word-node {
@@ -247,8 +249,6 @@
         }
 
         // --- BACKEND & REAL-TIME SYNC ---
-        
-        // Fetch existing entries on load and subscribe to live changes
         async function initAudienceCloud() {
             // 1. Initial Load
             const { data, error } = await supabase
@@ -272,7 +272,6 @@
                     renderCloud();
                 })
                 .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'word_cloud' }, () => {
-                    // If table is wiped via reset
                     wordCounts = {};
                     renderCloud();
                 })
@@ -285,10 +284,8 @@
             const width = container.clientWidth;
             const height = container.clientHeight;
 
-            // Clear previous SVG
             container.innerHTML = "";
 
-            // Format data for D3
             const wordsArray = Object.keys(wordCounts).map(word => ({
                 text: word,
                 size: wordCounts[word]
@@ -298,20 +295,19 @@
 
             if(wordsArray.length === 0) return;
 
-            // Mathematical scalers for size dynamics
             const maxCount = d3.max(wordsArray, d => d.size);
             const minCount = d3.min(wordsArray, d => d.size);
             
-            // Linear scale map: inputs sizing from 16px to 70px based on prominence
-            const sizeScale = d3.scaleLinear()
-                .domain([minCount, maxCount])
-                .range([16, 70]);
+            // Bug 2 修正：防呆機制。如果最大與最小相同（例如剛開局只有一個詞），固定設定為 40px，避免除以零錯誤
+            const sizeScale = (maxCount === minCount) 
+                ? () => 40 
+                : d3.scaleLinear().domain([minCount, maxCount]).range([18, 70]);
 
             const layout = d3.layout.cloud()
                 .size([width, height])
                 .words(wordsArray)
-                .padding(8) // Keeps block boundaries separate
-                .rotate(() => 0) // Strict 0-degree rotation matching retro gaming UI UI alignment
+                .padding(12) 
+                .rotate(() => 0) 
                 .font("'Press Start 2P'")
                 .fontSize(d => sizeScale(d.size))
                 .on("end", draw);
@@ -330,6 +326,7 @@
                     .data(words)
                   .enter().append("text")
                     .attr("class", "word-node")
+                    // Bug 3 修正：直接套用 D3 Cloud 計算好的 size 數值
                     .style("font-size", d => d.size + "px")
                     .style("fill", () => colors[Math.floor(Math.random() * colors.length)])
                     .style("text-shadow", "3px 3px 0px #000")
@@ -339,7 +336,6 @@
             }
         }
 
-        // Display Top 5 items dynamically
         function updateLeaderboard(wordsArray) {
             const topContainer = document.getElementById('top-words');
             const sorted = [...wordsArray].sort((a, b) => b.size - a.size).slice(0, 5);
@@ -358,7 +354,6 @@
             const feedback = document.getElementById('feedback-msg');
             let rawWord = inputElement.value.trim();
 
-            // Guard rails
             if (!rawWord) return;
             if (rawWord.split(/\s+/).length > 2) {
                 feedback.style.color = "red";
@@ -366,9 +361,8 @@
                 return;
             }
 
-            // Client-Side Anti-Spam: LocalStorage footprint lock
             const lastSubmissionTime = localStorage.getItem('last_sub_time');
-            const cooldownPeriod = 5000; // 5 seconds cooldown matrix
+            const cooldownPeriod = 5000; 
 
             if (lastSubmissionTime && (Date.now() - lastSubmissionTime < cooldownPeriod)) {
                 feedback.style.color = "yellow";
@@ -376,18 +370,17 @@
                 return;
             }
 
-            // Execute Remote Push Execution
             const { error } = await supabase
                 .from('word_cloud')
                 .insert([{ word: rawWord }]);
 
             if (!error) {
                 localStorage.setItem('last_sub_time', Date.now());
-                feedback.style.color = var(--primary-green);
+                // Bug 1 修正：將 var(--primary-green) 改為直接賦予綠色字串，避免 JS 拋錯
+                feedback.style.color = "#39ff14"; 
                 feedback.innerText = "WORD BROADCASTED SUCCESSFULLY!";
                 inputElement.value = "";
                 
-                // Haptic feedback for tactile retro button feel if device allows
                 if(navigator.vibrate) navigator.vibrate(50); 
             } else {
                 feedback.style.color = "red";
@@ -395,24 +388,21 @@
             }
         }
 
-        // System wiping mechanism
         async function clearCloud() {
             if (confirm("Wipe entire database canvas for next round?")) {
                 const { error } = await supabase
                     .from('word_cloud')
                     .delete()
-                    .neq('word', 'placeholder_wiping_trick'); // Standard relational bypass to clear everything safely
+                    .neq('word', 'placeholder_wiping_trick'); 
             }
         }
 
         function setupMobileInteractions() {
-            // Allow submission via "Enter" key on virtual keypads
             document.getElementById('word-input').addEventListener('keypress', function (e) {
                 if (e.key === 'Enter') sendWord();
             });
         }
 
-        // Ignition Trigger
         window.onload = initApp;
     </script>
 </body>
