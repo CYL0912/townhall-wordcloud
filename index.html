@@ -245,11 +245,14 @@
             const urlParams = new URLSearchParams(window.location.search);
             const role = urlParams.get('role');
 
-            if (role === 'mobile' || (/Mobi|Android|iPhone/i.test(navigator.userAgent) && role !== 'tv')) {
+            // 🎯 核心修改區：明確的網址分流邏輯
+            // 如果網址明確指定 ?role=input 或是 ?role=mobile，或者用手機開且「沒有」強制指定 ?role=display
+            if (role === 'input' || role === 'mobile' || (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) && role !== 'display')) {
                 currentRole = "mobile";
                 document.getElementById('mobile-screen').classList.add('active');
                 setupMobileInteractions();
             } else {
+                // 電腦版，或者手機版被強制指定了 ?role=display
                 currentRole = "audience";
                 document.getElementById('audience-screen').classList.add('active');
                 initAudienceCloud();
@@ -482,5 +485,3 @@
     </script>
 </body>
 </html>
-
-這是Claude給的
