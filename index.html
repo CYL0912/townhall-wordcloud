@@ -43,7 +43,6 @@
             top: 0; left: 0; bottom: 0; right: 0;
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
             z-index: 999;
-            background-size: 100% 4px, 6px 100%;
             pointer-events: none;
         }
 
@@ -123,7 +122,6 @@
             line-height: 1.5;
             margin-bottom: 25px;
             color: var(--mint-green);
-            box-shadow: none;
         }
 
         input[type="text"] {
@@ -136,11 +134,6 @@
             text-align: center;
             outline: none;
             margin-bottom: 20px;
-        }
-
-        input[type="text"]:focus {
-            border-color: var(--primary-green);
-            box-shadow: 0 0 10px var(--accent-glow);
         }
 
         button {
@@ -180,11 +173,13 @@
             min-height: 15px;
         }
 
+        /* 🛠️ 修改了動畫：拔除 transform: translate(-50%,-50%) 避免干擾 Hitbox 計算 */
         @keyframes pixel-pop {
-            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-            70% { transform: translate(-50%, -50%) scale(1.1); }
-            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            0% { transform: scale(0); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
         }
+        
         .cloud-word {
             position: absolute;
             white-space: nowrap;
@@ -270,6 +265,7 @@
                 .subscribe();
         }
 
+        // --- 🚀 全新升級：帶有 Hitbox 碰撞偵測的排版引擎 ---
         function renderCloud() {
             const container = document.getElementById('word-cloud-container');
             container.innerHTML = "";
@@ -286,57 +282,49 @@
             const maxCount = Math.max(...wordsArray.map(w => w.size));
             const minCount = Math.min(...wordsArray.map(w => w.size));
 
+            // 取得畫布的寬高與正中心座標
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            const centerX = containerWidth / 2;
+            const centerY = containerHeight / 2;
+
+            // 存放已經放置成功的 Hitbox
+            const placedBoxes = [];
+            // 設定每個字周圍的保護間隔 (Hitbox Padding)
+            const HITBOX_PADDING = 10; 
+
             wordsArray.forEach((wordObj, index) => {
                 const el = document.createElement('div');
                 el.className = 'cloud-word';
                 el.innerText = wordObj.text;
 
-                let fontSize = 24;
-                let color = '#228b22';
+                let fontSize = 20;
+                let color = '#39ff14';
                 let textShadow = '2px 2px 0px #000';
-                let leftPercent = 50;
-                let topPercent = 50;
 
-                // 👑 第一名絕對主角
+                // 決定大小與顏色
                 if (index === 0) {
-                    fontSize = 85; // 稍微再增肥放大一點點
+                    fontSize = 85; 
                     color = '#ffffff'; 
                     textShadow = '0 0 15px #39ff14, 0 0 35px #39ff14, 4px 4px 0px #000'; 
-                    leftPercent = 50;
-                    topPercent = 50;
                 } else {
-                    // 📡 🛠️ 優化：將雷達軌道半徑大幅度向內緊縮，消滅真空帶！
-                    let radius = 13;
-                    if (index <= 4) radius = 13;      // 緊貼核心圈
-                    else if (index <= 10) radius = 23; // 中圍圈
-                    else radius = 33;                  // 最外圍圈
-
-                    const angle = (index * 135) * (Math.PI / 180); 
-                    leftPercent = 50 + (radius * Math.cos(angle) * 1.45);
-                    topPercent = 50 + (radius * Math.sin(angle));
-
-                    // 安全邊界
-                    leftPercent = Math.max(10, Math.min(90, leftPercent));
-                    topPercent = Math.max(10, Math.min(90, topPercent));
-
-                    // 🛠️ 優化：全面拔除暗綠色，大幅調高邊緣字的基礎亮度
                     if (wordObj.size === maxCount) {
                         fontSize = 48;
-                        color = '#39ff14'; // 螢光綠
+                        color = '#39ff14';
                         textShadow = '0 0 8px #39ff14, 3px 3px 0px #000';
                     } else {
                         const ratio = maxCount === minCount ? 0 : (wordObj.size - minCount) / (maxCount - minCount);
                         if (ratio > 0.5) {
                             fontSize = 36;
-                            color = '#ffffff'; // 高頻字給予白芯提高辨識度
+                            color = '#ffffff';
                             textShadow = '0 0 5px #39ff14, 2px 2px 0px #000';
                         } else if (ratio > 0.1) {
                             fontSize = 26;
-                            color = '#98ff98'; // 中頻字給予亮薄荷綠
+                            color = '#98ff98';
                             textShadow = '2px 2px 0px #000';
                         } else {
                             fontSize = 20;
-                            color = '#39ff14'; // 🛠️ 亮點：最少票數的字也直接用螢光綠，但在陰影上不發光，既清晰又不會搶主角風頭
+                            color = '#39ff14';
                             textShadow = '2px 2px 0px #000';
                         }
                     }
@@ -345,10 +333,74 @@
                 el.style.fontSize = fontSize + 'px';
                 el.style.color = color;
                 el.style.textShadow = textShadow;
-                el.style.left = leftPercent + '%';
-                el.style.top = topPercent + '%';
 
+                // 先將元素加進畫面，藉此量測它真正的寬度與高度 (Hitbox 尺寸)
                 container.appendChild(el);
+                const wordWidth = el.offsetWidth;
+                const wordHeight = el.offsetHeight;
+
+                let finalX = centerX;
+                let finalY = centerY;
+
+                // 👑 第一名直接鎖死正中央，不需找位子
+                if (index === 0) {
+                    finalX = centerX;
+                    finalY = centerY;
+                    placedBoxes.push({
+                        left: finalX - wordWidth / 2 - HITBOX_PADDING,
+                        right: finalX + wordWidth / 2 + HITBOX_PADDING,
+                        top: finalY - wordHeight / 2 - HITBOX_PADDING,
+                        bottom: finalY + wordHeight / 2 + HITBOX_PADDING
+                    });
+                } else {
+                    // 📡 碰撞偵測螺旋演算法 (AABB Collision)
+                    let angle = index * 137.5 * (Math.PI / 180); // 使用黃金角開始
+                    let radius = 10;
+                    let step = 3; // 每次往外擴展的像素
+
+                    while (true) {
+                        // 1.5倍的 X 軸加成，讓擴展更符合 16:9 的螢幕比例
+                        let testX = centerX + radius * Math.cos(angle) * 1.5;
+                        let testY = centerY + radius * Math.sin(angle);
+
+                        // 建立這個測試座標的 Hitbox
+                        let testBox = {
+                            left: testX - wordWidth / 2 - HITBOX_PADDING,
+                            right: testX + wordWidth / 2 + HITBOX_PADDING,
+                            top: testY - wordHeight / 2 - HITBOX_PADDING,
+                            bottom: testY + wordHeight / 2 + HITBOX_PADDING
+                        };
+
+                        // 檢查是否與任何已經擺放好的 Hitbox 發生重疊
+                        let isOverlapping = false;
+                        for (let box of placedBoxes) {
+                            // AABB 碰撞公式判斷
+                            if (!(testBox.right < box.left || 
+                                  testBox.left > box.right || 
+                                  testBox.bottom < box.top || 
+                                  testBox.top > box.bottom)) {
+                                isOverlapping = true;
+                                break;
+                            }
+                        }
+
+                        // 防呆機制：如果螺旋向外找了太遠 (大於畫布對角線)，直接強制放下避免無窮迴圈
+                        if (!isOverlapping || radius > Math.max(containerWidth, containerHeight)) {
+                            finalX = testX;
+                            finalY = testY;
+                            placedBoxes.push(testBox); // 紀錄這個成功的 Hitbox
+                            break;
+                        }
+
+                        // 如果重疊了，轉一點角度並往外推一點點，繼續找位子！
+                        angle += 0.5;
+                        radius += step;
+                    }
+                }
+
+                // 最終計算出來的座標，套用到元素的絕對定位上 (扣除自身寬高的一半以達到中心點對齊)
+                el.style.left = (finalX - wordWidth / 2) + 'px';
+                el.style.top = (finalY - wordHeight / 2) + 'px';
             });
         }
 
