@@ -9,14 +9,12 @@
 
     <style>
         :root {
-            --blossom-pink: #FF3399; 
-            --bubbles-blue: #33CCFF; 
-            --buttercup-green: #66FF33; 
+            --blossom-pink: #FF3399;
+            --bubbles-blue: #33CCFF;
+            --buttercup-green: #66FF33;
             --bg-pastel: linear-gradient(135deg, #FFE5F1, #E5F5FF, #E5FFE5);
-            
             --black: #000000;
             --white: #ffffff;
-            
             --comic-border: 4px solid var(--black);
             --hard-shadow: 6px 6px 0px var(--black);
             --button-shadow: 4px 4px 0px var(--black);
@@ -43,10 +41,14 @@
         }
 
         .screen {
-            display: none; /* 預設隱藏，交由 JS 強制開啟 */
+            display: none;
             width: 100%;
             height: 100vh;
             padding: 20px;
+        }
+
+        .active {
+            display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
@@ -85,7 +87,7 @@
             flex-wrap: wrap;
             justify-content: center;
         }
-        
+
         .top-tag {
             background: var(--bubbles-blue);
             color: var(--white);
@@ -193,12 +195,12 @@
         }
 
         @keyframes bubble-pop {
-            0% { transform: scale(0); opacity: 0; }
-            50% { transform: scale(1.2); }
-            70% { transform: scale(0.9); }
+            0%   { transform: scale(0); opacity: 0; }
+            50%  { transform: scale(1.2); }
+            70%  { transform: scale(0.9); }
             100% { transform: scale(1); opacity: 1; }
         }
-        
+
         .cloud-word {
             position: absolute;
             white-space: nowrap;
@@ -207,7 +209,7 @@
             animation: bubble-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
             line-height: 1;
         }
-    </script>
+    </style>
 </head>
 <body>
 
@@ -215,7 +217,6 @@
         <h1>🍭 TOWNSVILLE CLOUD 💖</h1>
         <div id="word-cloud-container"></div>
         <div id="top-words">TOP 5: Loading...</div>
-        
         <div id="admin-panel">
             <button id="reset-btn" onclick="clearCloud()">RESET DB</button>
         </div>
@@ -232,51 +233,26 @@
     </div>
 
     <script>
-        // 🚨 全域錯誤攔截器：如果 JS 崩潰，畫面上方會直接彈出紅色警告框，方便我們抓蟲！
-        window.onerror = function(message, source, lineno, colno, error) {
-            const errDiv = document.createElement('div');
-            errDiv.style.cssText = "position:fixed; top:0; left:0; width:100%; background:red; color:white; padding:15px; z-index:9999; font-size:14px; text-align:center;";
-            errDiv.innerText = `🚨 系統崩潰: ${message} (Line: ${lineno})`;
-            document.body.appendChild(errDiv);
-        };
-
         const SUPABASE_URL = "https://gslpqlnrupulptqntwvz.supabase.co";
         const SUPABASE_KEY = "sb_publishable_qfy-lAoKfieXeU3jkgQ_4A_egK0DSrK";
-        
-        let db = null;
+
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         let wordCounts = {};
         let currentRole = "audience";
-
-        // 核心啟動程式：確保 DOM 載入後才執行，避免抓不到 HTML 元素
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                // 安全初始化 Supabase
-                if (typeof supabase !== 'undefined') {
-                    db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                } else {
-                    console.error("Supabase SDK 未能載入，可能被阻擋或網路問題");
-                }
-
-                initApp();
-            } catch (e) {
-                console.error("初始化失敗:", e);
-                throw e; // 丟給上方的紅色攔截器
-            }
-        });
 
         function initApp() {
             const urlParams = new URLSearchParams(window.location.search);
             const role = urlParams.get('role');
-            
-            // 暴力強制顯示畫面，絕不依賴 CSS 類別
+
             if (role === 'mobile' || (/Mobi|Android|iPhone/i.test(navigator.userAgent) && role !== 'tv')) {
                 currentRole = "mobile";
-                document.getElementById('mobile-screen').style.display = 'flex';
+                document.getElementById('mobile-screen').classList.add('active');
                 setupMobileInteractions();
             } else {
                 currentRole = "audience";
-                document.getElementById('audience-screen').style.display = 'flex';
-                if (db) initAudienceCloud();
+                document.getElementById('audience-screen').classList.add('active');
+                initAudienceCloud();
             }
         }
 
@@ -292,7 +268,7 @@
                             }
                         });
                     }
-                    renderCloud(); 
+                    renderCloud();
                 });
 
             db.channel('schema-db-changes')
@@ -326,13 +302,13 @@
             const maxCount = Math.max(...wordsArray.map(w => w.size));
             const minCount = Math.min(...wordsArray.map(w => w.size));
 
-            const containerWidth = container.clientWidth;
+            const containerWidth  = container.clientWidth;
             const containerHeight = container.clientHeight;
-            const centerX = containerWidth / 2;
+            const centerX = containerWidth  / 2;
             const centerY = containerHeight / 2;
 
             const placedBoxes = [];
-            const HITBOX_PADDING = 15; 
+            const HITBOX_PADDING = 12;
 
             const ppgColors = ['#FF3399', '#33CCFF', '#66FF33', '#FF9933', '#B84DFF'];
 
@@ -343,17 +319,17 @@
 
                 let fontSize = 20;
                 let color = ppgColors[index % ppgColors.length];
-                
+
                 let textStrokeAndShadow = `
-                    -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 
+                    -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff,
                     4px 4px 0px #000
                 `;
 
                 if (index === 0) {
-                    fontSize = 90; 
-                    color = '#FF3399'; 
+                    fontSize = 90;
+                    color = '#FF3399';
                     textStrokeAndShadow = `
-                        -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 3px 3px 0 #fff, 
+                        -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 3px 3px 0 #fff,
                         6px 6px 0px #000
                     `;
                 } else {
@@ -371,12 +347,12 @@
                     }
                 }
 
-                el.style.fontSize = fontSize + 'px';
-                el.style.color = color;
+                el.style.fontSize  = fontSize + 'px';
+                el.style.color     = color;
                 el.style.textShadow = textStrokeAndShadow;
 
                 container.appendChild(el);
-                const wordWidth = el.offsetWidth;
+                const wordWidth  = el.offsetWidth;
                 const wordHeight = el.offsetHeight;
 
                 let finalX = centerX;
@@ -386,30 +362,31 @@
                     finalX = centerX;
                     finalY = centerY;
                     placedBoxes.push({
-                        left: finalX - wordWidth / 2 - HITBOX_PADDING,
-                        right: finalX + wordWidth / 2 + HITBOX_PADDING,
-                        top: finalY - wordHeight / 2 - HITBOX_PADDING,
+                        left:   finalX - wordWidth  / 2 - HITBOX_PADDING,
+                        right:  finalX + wordWidth  / 2 + HITBOX_PADDING,
+                        top:    finalY - wordHeight / 2 - HITBOX_PADDING,
                         bottom: finalY + wordHeight / 2 + HITBOX_PADDING
                     });
                 } else {
-                    let angle = index * 137.5 * (Math.PI / 180); 
+                    let angle  = index * 137.5 * (Math.PI / 180);
                     let radius = 15;
-                    let step = 3; 
+                    const step = 3;
 
                     while (true) {
                         let testX = centerX + radius * Math.cos(angle) * 1.5;
                         let testY = centerY + radius * Math.sin(angle);
 
                         let testBox = {
-                            left: testX - wordWidth / 2 - HITBOX_PADDING,
-                            right: testX + wordWidth / 2 + HITBOX_PADDING,
-                            top: testY - wordHeight / 2 - HITBOX_PADDING,
+                            left:   testX - wordWidth  / 2 - HITBOX_PADDING,
+                            right:  testX + wordWidth  / 2 + HITBOX_PADDING,
+                            top:    testY - wordHeight / 2 - HITBOX_PADDING,
                             bottom: testY + wordHeight / 2 + HITBOX_PADDING
                         };
 
                         let isOverlapping = false;
                         for (let box of placedBoxes) {
-                            if (!(testBox.right < box.left || testBox.left > box.right || testBox.bottom < box.top || testBox.top > box.bottom)) {
+                            if (!(testBox.right < box.left || testBox.left > box.right ||
+                                  testBox.bottom < box.top || testBox.top > box.bottom)) {
                                 isOverlapping = true;
                                 break;
                             }
@@ -418,25 +395,25 @@
                         if (!isOverlapping || radius > Math.max(containerWidth, containerHeight)) {
                             finalX = testX;
                             finalY = testY;
-                            placedBoxes.push(testBox); 
+                            placedBoxes.push(testBox);
                             break;
                         }
 
-                        angle += 0.5;
+                        angle  += 0.5;
                         radius += step;
                     }
                 }
 
-                el.style.left = (finalX - wordWidth / 2) + 'px';
-                el.style.top = (finalY - wordHeight / 2) + 'px';
+                el.style.left = (finalX - wordWidth  / 2) + 'px';
+                el.style.top  = (finalY - wordHeight / 2) + 'px';
             });
         }
 
         function updateLeaderboard(wordsArray) {
             const topContainer = document.getElementById('top-words');
             const sorted = [...wordsArray].sort((a, b) => b.size - a.size).slice(0, 5);
-            
-            if(sorted.length === 0) {
+
+            if (sorted.length === 0) {
                 topContainer.innerHTML = "TOP 5: AWAITING INPUTS...";
                 return;
             }
@@ -450,29 +427,23 @@
 
         async function sendWord() {
             const inputElement = document.getElementById('word-input');
-            const feedback = document.getElementById('feedback-msg');
-            let rawWord = inputElement.value.trim();
+            const feedback     = document.getElementById('feedback-msg');
+            const rawWord      = inputElement.value.trim();
 
             if (!rawWord) return;
-            
+
             if (rawWord.split(/\s+/).length > 2) {
                 feedback.style.color = "red";
-                feedback.innerText = "🚨 太多字囉！最多兩個詞！";
+                feedback.innerText   = "🚨 太多字囉！最多兩個詞！";
                 return;
             }
 
             const lastSubmissionTime = localStorage.getItem('last_sub_time');
-            const cooldownPeriod = 5000; 
+            const cooldownPeriod     = 5000;
 
             if (lastSubmissionTime && (Date.now() - lastSubmissionTime < cooldownPeriod)) {
                 feedback.style.color = "#FF3399";
-                feedback.innerText = "⏳ 休息一下，5秒後再傳送！";
-                return;
-            }
-
-            if (!db) {
-                feedback.style.color = "red";
-                feedback.innerText = "❌ 系統斷線，請重整頁面。";
+                feedback.innerText   = "⏳ 休息一下，5秒後再傳送！";
                 return;
             }
 
@@ -482,24 +453,22 @@
 
             if (!error) {
                 localStorage.setItem('last_sub_time', Date.now());
-                feedback.style.color = "#66FF33"; 
-                feedback.innerText = "✨ 成功傳送至小鎮村！";
-                inputElement.value = "";
-                
-                if(navigator.vibrate) navigator.vibrate(50); 
+                feedback.style.color = "#66FF33";
+                feedback.innerText   = "✨ 成功傳送至小鎮村！";
+                inputElement.value   = "";
+                if (navigator.vibrate) navigator.vibrate(50);
             } else {
                 feedback.style.color = "red";
-                feedback.innerText = "❌ 傳送失敗，請再試一次。";
+                feedback.innerText   = "❌ 傳送失敗，請再試一次。";
             }
         }
 
         async function clearCloud() {
-            if (!db) return;
             if (confirm("要清空小鎮村的記憶嗎？ (Wipe Database?)")) {
-                const { error } = await db
+                await db
                     .from('word_cloud')
                     .delete()
-                    .neq('word', 'placeholder_wiping_trick'); 
+                    .neq('word', 'placeholder_wiping_trick');
             }
         }
 
@@ -508,6 +477,10 @@
                 if (e.key === 'Enter') sendWord();
             });
         }
+
+        window.onload = initApp;
     </script>
 </body>
 </html>
+
+這是Claude給的
