@@ -24,14 +24,14 @@
 
         * {
             box-sizing: border-box;
-            font-family: 'Nunito', 'Microsoft JhengHei', 'PingFang TC', sans-serif; /* 圓潤粗體字堆疊 */
+            font-family: 'Nunito', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
             font-weight: 900;
         }
 
         body {
             margin: 0;
             padding: 0;
-            background: var(--bg-pastel); /* 糖果漸層背景，消滅以前的奇怪黑線 */
+            background: var(--bg-pastel);
             background-attachment: fixed;
             color: var(--black);
             overflow: hidden;
@@ -42,6 +42,8 @@
             min-height: 100vh;
         }
 
+        /* 🚨 已經徹底移除了上一版造成詭異黑線的 body::before 駭客掃描線特效！ */
+
         .screen {
             display: none;
             width: 100%;
@@ -49,8 +51,9 @@
             padding: 20px;
         }
 
+        /* 加上 !important 強制覆蓋，保證畫面絕對出現 */
         .active {
-            display: flex;
+            display: flex !important;
             flex-direction: column;
             align-items: center;
             justify-content: center;
@@ -64,19 +67,18 @@
             font-size: 2rem;
             text-align: center;
             color: var(--white);
-            -webkit-text-stroke: 2px var(--black); /* 粗黑描邊 */
+            -webkit-text-stroke: 2px var(--black);
             text-shadow: 4px 4px 0px var(--black);
             margin-bottom: 15px;
             letter-spacing: 2px;
         }
 
-        /* 漫畫風文字雲畫布 */
         #word-cloud-container {
             width: 90vw;
             height: 70vh;
-            background-color: rgba(255, 255, 255, 0.85); /* 半透明白底 */
+            background-color: rgba(255, 255, 255, 0.85);
             border: var(--comic-border);
-            border-radius: 30px; /* 圓角卡片 */
+            border-radius: 30px;
             box-shadow: var(--hard-shadow);
             position: relative;
             overflow: hidden;
@@ -91,7 +93,6 @@
             justify-content: center;
         }
         
-        /* 排行榜小標籤 */
         .top-tag {
             background: var(--bubbles-blue);
             color: var(--white);
@@ -109,7 +110,6 @@
             z-index: 100;
         }
 
-        /* 手機端卡片設計 */
         #mobile-screen {
             justify-content: flex-start;
             padding-top: 15%;
@@ -199,7 +199,6 @@
             font-weight: 900;
         }
 
-        /* 彈跳果凍動畫 */
         @keyframes bubble-pop {
             0% { transform: scale(0); opacity: 0; }
             50% { transform: scale(1.2); }
@@ -243,7 +242,12 @@
         const SUPABASE_URL = "https://gslpqlnrupulptqntwvz.supabase.co";
         const SUPABASE_KEY = "sb_publishable_qfy-lAoKfieXeU3jkgQ_4A_egK0DSrK";
         
-        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let db;
+        try {
+            db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch(err) {
+            console.error("Supabase 初始化失敗", err);
+        }
 
         let wordCounts = {};
         let currentRole = "audience";
@@ -259,7 +263,7 @@
             } else {
                 currentRole = "audience";
                 document.getElementById('audience-screen').classList.add('active');
-                initAudienceCloud();
+                if (db) initAudienceCloud();
             }
         }
 
@@ -315,9 +319,8 @@
             const centerY = containerHeight / 2;
 
             const placedBoxes = [];
-            const HITBOX_PADDING = 12; // 稍微增加碰撞保護，讓圓潤字體不打架
+            const HITBOX_PADDING = 15; // 保護間距稍微加大，給圓潤字型更多呼吸空間
 
-            // 🎨 定義小女警配色輪迴陣列 (花花, 泡泡, 毛毛)
             const ppgColors = ['#FF3399', '#33CCFF', '#66FF33', '#FF9933', '#B84DFF'];
 
             wordsArray.forEach((wordObj, index) => {
@@ -328,13 +331,11 @@
                 let fontSize = 20;
                 let color = ppgColors[index % ppgColors.length];
                 
-                // 卡通文字白邊與實心黑陰影配方
                 let textStrokeAndShadow = `
                     -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 
                     4px 4px 0px #000
                 `;
 
-                // 👑 第一名絕對主角：巨大化 + 花花專屬粉紅
                 if (index === 0) {
                     fontSize = 90; 
                     color = '#FF3399'; 
@@ -368,7 +369,6 @@
                 let finalX = centerX;
                 let finalY = centerY;
 
-                // Hitbox 防碰撞雷達運算 (與上一版完全相同，100% 穩定)
                 if (index === 0) {
                     finalX = centerX;
                     finalY = centerY;
@@ -431,30 +431,4 @@
             topContainer.innerHTML = "TOP 5: " + sorted.map((w, i) => {
                 const colors = ['#FF3399', '#33CCFF', '#66FF33', '#FF9933', '#B84DFF'];
                 const bg = colors[i % colors.length];
-                return `<span class="top-tag" style="background:${bg}">${w.text} (${w.size})</span>`;
-            }).join(" ");
-        }
-
-        async function sendWord() {
-            const inputElement = document.getElementById('word-input');
-            const feedback = document.getElementById('feedback-msg');
-            let rawWord = inputElement.value.trim();
-
-            if (!rawWord) return;
-            
-            if (rawWord.split(/\s+/).length > 2) {
-                feedback.style.color = "red";
-                feedback.innerText = "🚨 太多字囉！最多兩個詞！";
-                return;
-            }
-
-            const lastSubmissionTime = localStorage.getItem('last_sub_time');
-            const cooldownPeriod = 5000; 
-
-            if (lastSubmissionTime && (Date.now() - lastSubmissionTime < cooldownPeriod)) {
-                feedback.style.color = "#FF3399";
-                feedback.innerText = "⏳ 休息一下，5秒後再傳送！";
-                return;
-            }
-
-            const { error } = await
+                return `<span class
