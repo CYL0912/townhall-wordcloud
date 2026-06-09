@@ -3,47 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retro Townhall Word Cloud</title>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <title>Powerpuff Word Cloud</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         :root {
-            --bg-dark: #0a120b;
-            --primary-green: #39ff14; 
-            --dark-green: #0f5213;
-            --mint-green: #98ff98;
-            --accent-glow: rgba(57, 255, 20, 0.4);
-            --pixel-border: 4px solid #39ff14;
+            --blossom-pink: #FF3399; /* 花花粉 */
+            --bubbles-blue: #33CCFF; /* 泡泡藍 */
+            --buttercup-green: #66FF33; /* 毛毛綠 */
+            --bg-pastel: linear-gradient(135deg, #FFE5F1, #E5F5FF, #E5FFE5);
+            
+            --black: #000000;
+            --white: #ffffff;
+            
+            --comic-border: 4px solid var(--black);
+            --hard-shadow: 6px 6px 0px var(--black);
+            --button-shadow: 4px 4px 0px var(--black);
         }
 
         * {
             box-sizing: border-box;
-            font-family: 'Press Start 2P', monospace;
-            image-rendering: pixelated;
+            font-family: 'Nunito', 'Microsoft JhengHei', 'PingFang TC', sans-serif; /* 圓潤粗體字堆疊 */
+            font-weight: 900;
         }
 
         body {
             margin: 0;
             padding: 0;
-            background-color: var(--bg-dark);
-            color: var(--primary-green);
+            background: var(--bg-pastel); /* 糖果漸層背景，消滅以前的奇怪黑線 */
+            background-attachment: fixed;
+            color: var(--black);
             overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-        }
-
-        body::before {
-            content: " ";
-            display: block;
-            position: fixed;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 999;
-            pointer-events: none;
         }
 
         .screen {
@@ -65,34 +61,45 @@
         }
 
         h1 {
-            font-size: 1.3rem;
+            font-size: 2rem;
             text-align: center;
-            text-shadow: 0 0 10px var(--accent-glow);
-            margin-bottom: 10px;
+            color: var(--white);
+            -webkit-text-stroke: 2px var(--black); /* 粗黑描邊 */
+            text-shadow: 4px 4px 0px var(--black);
+            margin-bottom: 15px;
+            letter-spacing: 2px;
         }
 
+        /* 漫畫風文字雲畫布 */
         #word-cloud-container {
             width: 90vw;
             height: 70vh;
-            border: var(--pixel-border);
-            box-shadow: 0 0 20px var(--accent-glow);
-            background-color: rgba(10, 18, 11, 0.8);
+            background-color: rgba(255, 255, 255, 0.85); /* 半透明白底 */
+            border: var(--comic-border);
+            border-radius: 30px; /* 圓角卡片 */
+            box-shadow: var(--hard-shadow);
             position: relative;
             overflow: hidden;
         }
 
         #top-words {
-            margin-top: 15px;
-            font-size: 0.65rem;
+            margin-top: 20px;
+            font-size: 1rem;
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
             justify-content: center;
         }
+        
+        /* 排行榜小標籤 */
         .top-tag {
-            background: var(--dark-green);
-            padding: 5px 10px;
-            border: 2px solid var(--primary-green);
+            background: var(--bubbles-blue);
+            color: var(--white);
+            padding: 8px 16px;
+            border: 3px solid var(--black);
+            border-radius: 20px;
+            box-shadow: 3px 3px 0px var(--black);
+            -webkit-text-stroke: 1px var(--black);
         }
 
         #admin-panel {
@@ -102,81 +109,101 @@
             z-index: 100;
         }
 
+        /* 手機端卡片設計 */
         #mobile-screen {
             justify-content: flex-start;
-            padding-top: 20%;
+            padding-top: 15%;
         }
 
         .card {
-            border: var(--pixel-border);
-            padding: 25px 15px;
-            background: #000;
+            border: var(--comic-border);
+            border-radius: 25px;
+            padding: 30px 20px;
+            background: var(--white);
             width: 90%;
             max-width: 400px;
             text-align: center;
-            box-shadow: 8px 8px 0px var(--dark-green);
+            box-shadow: 10px 10px 0px rgba(0,0,0,0.1), var(--hard-shadow);
+        }
+
+        .card h1 {
+            color: var(--blossom-pink);
+            font-size: 1.8rem;
         }
 
         .instruction {
-            font-size: 0.65rem;
+            font-size: 0.9rem;
             line-height: 1.5;
             margin-bottom: 25px;
-            color: var(--mint-green);
+            color: #555;
+            font-weight: bold;
         }
 
         input[type="text"] {
             width: 100%;
-            padding: 12px;
-            background: #000;
-            border: 4px solid var(--mint-green);
-            color: var(--primary-green);
-            font-size: 0.8rem;
+            padding: 15px;
+            background: #f0f0f0;
+            border: 3px solid var(--black);
+            border-radius: 15px;
+            color: var(--black);
+            font-size: 1.1rem;
+            font-weight: bold;
             text-align: center;
             outline: none;
             margin-bottom: 20px;
+            box-shadow: inset 3px 3px 0px rgba(0,0,0,0.1);
+        }
+
+        input[type="text"]:focus {
+            background: var(--white);
+            border-color: var(--blossom-pink);
         }
 
         button {
-            background-color: var(--dark-green);
-            color: white;
-            border: 4px solid #fff;
+            border: 3px solid var(--black);
+            border-radius: 15px;
             padding: 12px 24px;
-            font-size: 0.75rem;
+            font-size: 1rem;
+            font-weight: 900;
             cursor: pointer;
-            box-shadow: 4px 4px 0px #fff;
-            transition: transform 0.1s;
+            box-shadow: var(--button-shadow);
+            transition: transform 0.1s, box-shadow 0.1s;
         }
 
         button:active {
             transform: translate(4px, 4px);
-            box-shadow: 0px 0px 0px #fff;
+            box-shadow: 0px 0px 0px var(--black);
         }
 
         #submit-btn {
             width: 100%;
-            background-color: var(--primary-green);
-            color: #000;
-            border-color: var(--mint-green);
-            box-shadow: 4px 4px 0px var(--dark-green);
+            background-color: var(--buttercup-green);
+            color: var(--white);
+            -webkit-text-stroke: 1px var(--black);
+            font-size: 1.2rem;
+            letter-spacing: 1px;
         }
 
         #reset-btn {
-            font-size: 0.5rem;
-            padding: 5px 10px;
-            border-width: 2px;
-            box-shadow: 2px 2px 0px #fff;
+            font-size: 0.7rem;
+            padding: 8px 15px;
+            background-color: #ff4d4d;
+            color: white;
+            border-radius: 10px;
         }
 
         #feedback-msg {
             margin-top: 15px;
-            font-size: 0.6rem;
+            font-size: 0.85rem;
             min-height: 15px;
+            font-weight: 900;
         }
 
-        /* 🛠️ 修改了動畫：拔除 transform: translate(-50%,-50%) 避免干擾 Hitbox 計算 */
-        @keyframes pixel-pop {
+        /* 彈跳果凍動畫 */
+        @keyframes bubble-pop {
             0% { transform: scale(0); opacity: 0; }
-            70% { transform: scale(1.1); }
+            50% { transform: scale(1.2); }
+            70% { transform: scale(0.9); }
             100% { transform: scale(1); opacity: 1; }
         }
         
@@ -185,28 +212,29 @@
             white-space: nowrap;
             text-align: center;
             transform-origin: center;
-            animation: pixel-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+            animation: bubble-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+            line-height: 1;
         }
-    </style>
+    </script>
 </head>
 <body>
 
     <div id="audience-screen" class="screen">
-        <h1>[ RETRO TOWNHALL CLOUD ]</h1>
+        <h1>🍭 TOWNSVILLE CLOUD 💖</h1>
         <div id="word-cloud-container"></div>
         <div id="top-words">TOP 5: Loading...</div>
         
         <div id="admin-panel">
-            <button id="reset-btn" onclick="clearCloud()">RESET SYSTEM</button>
+            <button id="reset-btn" onclick="clearCloud()">RESET DB</button>
         </div>
     </div>
 
     <div id="mobile-screen" class="screen">
         <div class="card">
-            <h1>ENTER WORD</h1>
-            <p class="instruction">Submit your vibe in 1-2 words.<br>Spam filter is active!</p>
+            <h1>SUGAR & SPICE</h1>
+            <p class="instruction">輸入一個詞語！<br>看看小鎮村的大家在想什麼？</p>
             <input type="text" id="word-input" maxlength="20" placeholder="Type here..." autofocus>
-            <button id="submit-btn" onclick="sendWord()">SEND TO SCREEN</button>
+            <button id="submit-btn" onclick="sendWord()">SEND TO TOWN</button>
             <div id="feedback-msg"></div>
         </div>
     </div>
@@ -265,7 +293,6 @@
                 .subscribe();
         }
 
-        // --- 🚀 全新升級：帶有 Hitbox 碰撞偵測的排版引擎 ---
         function renderCloud() {
             const container = document.getElementById('word-cloud-container');
             container.innerHTML = "";
@@ -282,16 +309,16 @@
             const maxCount = Math.max(...wordsArray.map(w => w.size));
             const minCount = Math.min(...wordsArray.map(w => w.size));
 
-            // 取得畫布的寬高與正中心座標
             const containerWidth = container.clientWidth;
             const containerHeight = container.clientHeight;
             const centerX = containerWidth / 2;
             const centerY = containerHeight / 2;
 
-            // 存放已經放置成功的 Hitbox
             const placedBoxes = [];
-            // 設定每個字周圍的保護間隔 (Hitbox Padding)
-            const HITBOX_PADDING = 10; 
+            const HITBOX_PADDING = 12; // 稍微增加碰撞保護，讓圓潤字體不打架
+
+            // 🎨 定義小女警配色輪迴陣列 (花花, 泡泡, 毛毛)
+            const ppgColors = ['#FF3399', '#33CCFF', '#66FF33', '#FF9933', '#B84DFF'];
 
             wordsArray.forEach((wordObj, index) => {
                 const el = document.createElement('div');
@@ -299,42 +326,41 @@
                 el.innerText = wordObj.text;
 
                 let fontSize = 20;
-                let color = '#39ff14';
-                let textShadow = '2px 2px 0px #000';
+                let color = ppgColors[index % ppgColors.length];
+                
+                // 卡通文字白邊與實心黑陰影配方
+                let textStrokeAndShadow = `
+                    -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 
+                    4px 4px 0px #000
+                `;
 
-                // 決定大小與顏色
+                // 👑 第一名絕對主角：巨大化 + 花花專屬粉紅
                 if (index === 0) {
-                    fontSize = 85; 
-                    color = '#ffffff'; 
-                    textShadow = '0 0 15px #39ff14, 0 0 35px #39ff14, 4px 4px 0px #000'; 
+                    fontSize = 90; 
+                    color = '#FF3399'; 
+                    textStrokeAndShadow = `
+                        -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 3px 3px 0 #fff, 
+                        6px 6px 0px #000
+                    `;
                 } else {
                     if (wordObj.size === maxCount) {
-                        fontSize = 48;
-                        color = '#39ff14';
-                        textShadow = '0 0 8px #39ff14, 3px 3px 0px #000';
+                        fontSize = 55;
                     } else {
                         const ratio = maxCount === minCount ? 0 : (wordObj.size - minCount) / (maxCount - minCount);
                         if (ratio > 0.5) {
-                            fontSize = 36;
-                            color = '#ffffff';
-                            textShadow = '0 0 5px #39ff14, 2px 2px 0px #000';
+                            fontSize = 40;
                         } else if (ratio > 0.1) {
-                            fontSize = 26;
-                            color = '#98ff98';
-                            textShadow = '2px 2px 0px #000';
+                            fontSize = 30;
                         } else {
-                            fontSize = 20;
-                            color = '#39ff14';
-                            textShadow = '2px 2px 0px #000';
+                            fontSize = 22;
                         }
                     }
                 }
 
                 el.style.fontSize = fontSize + 'px';
                 el.style.color = color;
-                el.style.textShadow = textShadow;
+                el.style.textShadow = textStrokeAndShadow;
 
-                // 先將元素加進畫面，藉此量測它真正的寬度與高度 (Hitbox 尺寸)
                 container.appendChild(el);
                 const wordWidth = el.offsetWidth;
                 const wordHeight = el.offsetHeight;
@@ -342,7 +368,7 @@
                 let finalX = centerX;
                 let finalY = centerY;
 
-                // 👑 第一名直接鎖死正中央，不需找位子
+                // Hitbox 防碰撞雷達運算 (與上一版完全相同，100% 穩定)
                 if (index === 0) {
                     finalX = centerX;
                     finalY = centerY;
@@ -353,17 +379,14 @@
                         bottom: finalY + wordHeight / 2 + HITBOX_PADDING
                     });
                 } else {
-                    // 📡 碰撞偵測螺旋演算法 (AABB Collision)
-                    let angle = index * 137.5 * (Math.PI / 180); // 使用黃金角開始
-                    let radius = 10;
-                    let step = 3; // 每次往外擴展的像素
+                    let angle = index * 137.5 * (Math.PI / 180); 
+                    let radius = 15;
+                    let step = 3; 
 
                     while (true) {
-                        // 1.5倍的 X 軸加成，讓擴展更符合 16:9 的螢幕比例
                         let testX = centerX + radius * Math.cos(angle) * 1.5;
                         let testY = centerY + radius * Math.sin(angle);
 
-                        // 建立這個測試座標的 Hitbox
                         let testBox = {
                             left: testX - wordWidth / 2 - HITBOX_PADDING,
                             right: testX + wordWidth / 2 + HITBOX_PADDING,
@@ -371,34 +394,26 @@
                             bottom: testY + wordHeight / 2 + HITBOX_PADDING
                         };
 
-                        // 檢查是否與任何已經擺放好的 Hitbox 發生重疊
                         let isOverlapping = false;
                         for (let box of placedBoxes) {
-                            // AABB 碰撞公式判斷
-                            if (!(testBox.right < box.left || 
-                                  testBox.left > box.right || 
-                                  testBox.bottom < box.top || 
-                                  testBox.top > box.bottom)) {
+                            if (!(testBox.right < box.left || testBox.left > box.right || testBox.bottom < box.top || testBox.top > box.bottom)) {
                                 isOverlapping = true;
                                 break;
                             }
                         }
 
-                        // 防呆機制：如果螺旋向外找了太遠 (大於畫布對角線)，直接強制放下避免無窮迴圈
                         if (!isOverlapping || radius > Math.max(containerWidth, containerHeight)) {
                             finalX = testX;
                             finalY = testY;
-                            placedBoxes.push(testBox); // 紀錄這個成功的 Hitbox
+                            placedBoxes.push(testBox); 
                             break;
                         }
 
-                        // 如果重疊了，轉一點角度並往外推一點點，繼續找位子！
                         angle += 0.5;
                         radius += step;
                     }
                 }
 
-                // 最終計算出來的座標，套用到元素的絕對定位上 (扣除自身寬高的一半以達到中心點對齊)
                 el.style.left = (finalX - wordWidth / 2) + 'px';
                 el.style.top = (finalY - wordHeight / 2) + 'px';
             });
@@ -413,7 +428,11 @@
                 return;
             }
 
-            topContainer.innerHTML = "TOP 5: " + sorted.map(w => `<span class="top-tag">${w.text} (${w.size})</span>`).join(" ");
+            topContainer.innerHTML = "TOP 5: " + sorted.map((w, i) => {
+                const colors = ['#FF3399', '#33CCFF', '#66FF33', '#FF9933', '#B84DFF'];
+                const bg = colors[i % colors.length];
+                return `<span class="top-tag" style="background:${bg}">${w.text} (${w.size})</span>`;
+            }).join(" ");
         }
 
         async function sendWord() {
@@ -425,7 +444,7 @@
             
             if (rawWord.split(/\s+/).length > 2) {
                 feedback.style.color = "red";
-                feedback.innerText = "CRITICAL: MAX 2 WORDS!";
+                feedback.innerText = "🚨 太多字囉！最多兩個詞！";
                 return;
             }
 
@@ -433,44 +452,9 @@
             const cooldownPeriod = 5000; 
 
             if (lastSubmissionTime && (Date.now() - lastSubmissionTime < cooldownPeriod)) {
-                feedback.style.color = "yellow";
-                feedback.innerText = "COOLDOWN ACTIVE. WAIT SYSTEM COOLING...";
+                feedback.style.color = "#FF3399";
+                feedback.innerText = "⏳ 休息一下，5秒後再傳送！";
                 return;
             }
 
-            const { error } = await db
-                .from('word_cloud')
-                .insert([{ word: rawWord }]);
-
-            if (!error) {
-                localStorage.setItem('last_sub_time', Date.now());
-                feedback.style.color = "#39ff14"; 
-                feedback.innerText = "WORD BROADCASTED SUCCESSFULLY!";
-                inputElement.value = "";
-                
-                if(navigator.vibrate) navigator.vibrate(50); 
-            } else {
-                feedback.style.color = "red";
-                feedback.innerText = "TRANSMISSION ERROR.";
-            }
-        }
-
-        async function clearCloud() {
-            if (confirm("Wipe entire database canvas for next round?")) {
-                const { error } = await db
-                    .from('word_cloud')
-                    .delete()
-                    .neq('word', 'placeholder_wiping_trick'); 
-            }
-        }
-
-        function setupMobileInteractions() {
-            document.getElementById('word-input').addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') sendWord();
-            });
-        }
-
-        window.onload = initApp;
-    </script>
-</body>
-</html>
+            const { error } = await
