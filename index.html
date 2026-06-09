@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Powerpuff Word Cloud & Admin</title>
+    <title>Powerpuff Word Cloud</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -32,7 +32,7 @@
             background: var(--bg-pastel);
             background-attachment: fixed;
             color: var(--black);
-            overflow-x: hidden;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -56,25 +56,16 @@
 
         #audience-screen {
             position: relative;
-            width: 100%;
-            height: 100vh;
-            overflow: hidden;
         }
 
-        #audience-screen h1 {
-            position: absolute;
-            top: 3vh;
-            left: 50%;
-            transform: translateX(-50%);
-            margin: 0;
+        h1 {
             font-size: 2rem;
             text-align: center;
             color: var(--white);
             -webkit-text-stroke: 2px var(--black);
             text-shadow: 4px 4px 0px var(--black);
+            margin-bottom: 15px;
             letter-spacing: 2px;
-            z-index: 10;
-            width: 100%;
         }
 
         #word-cloud-container {
@@ -89,18 +80,12 @@
         }
 
         #top-words {
-            position: absolute;
-            bottom: 3vh;
-            left: 50%;
-            transform: translateX(-50%);
-            margin: 0;
+            margin-top: 20px;
             font-size: 1rem;
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
             justify-content: center;
-            z-index: 10;
-            width: 100%;
         }
 
         .top-tag {
@@ -194,80 +179,6 @@
             font-weight: 900;
         }
 
-        /* 👑 頁面 3：全新管理員後台介面樣式 */
-        #admin-screen {
-            justify-content: flex-start;
-            padding: 40px 20px;
-            height: auto;
-            min-height: 100vh;
-            overflow-y: auto;
-        }
-
-        .admin-box {
-            width: 100%;
-            max-width: 650px;
-            background: var(--white);
-            border: var(--comic-border);
-            border-radius: 25px;
-            padding: 30px;
-            box-shadow: var(--hard-shadow);
-        }
-
-        .admin-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 4px solid var(--black);
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
-
-        .admin-title {
-            font-size: 1.4rem;
-            color: var(--blossom-pink);
-        }
-
-        #wipe-btn {
-            background-color: #ff4d4d;
-            color: var(--white);
-            font-size: 0.9rem;
-            -webkit-text-stroke: 1px var(--black);
-        }
-
-        .log-container {
-            width: 100%;
-            max-height: 50vh;
-            overflow-y: auto;
-            border: 3px solid var(--black);
-            border-radius: 15px;
-            background: #fafafa;
-            padding: 15px;
-        }
-
-        .log-item {
-            display: flex;
-            justify-content: space-between;
-            background: var(--white);
-            border: 2px solid var(--black);
-            border-radius: 10px;
-            padding: 10px 15px;
-            margin-bottom: 10px;
-            box-shadow: 2px 2px 0px var(--black);
-        }
-
-        .log-word-text {
-            color: var(--black);
-        }
-
-        .log-count {
-            background: var(--bubbles-blue);
-            color: var(--white);
-            padding: 2px 8px;
-            border-radius: 8px;
-            border: 1px solid var(--black);
-            font-size: 0.8rem;
-        }
-
         @keyframes bubble-pop {
             0%   { transform: scale(0); opacity: 0; }
             50%  { transform: scale(1.2); }
@@ -289,12 +200,12 @@
 
     <div id="audience-screen" class="screen">
         <h1>
-            🍭 TOWNSVILLE CLOUD 💖
-            <span style="display: block; font-size: 0.85rem; color: #000000; -webkit-text-stroke: 0; text-shadow: none; margin-top: 8px; letter-spacing: 1px;">by CYL: )</span>
-        </h1>
+        🍭 TOWNSVILLE CLOUD 💖
+        <span style="display: block; font-size: 0.85rem; color: #000000; -webkit-text-stroke: 0; text-shadow: none; margin-top: 8px; letter-spacing: 1px;">by CYL: )</span>
+    </h1>
         <div id="word-cloud-container"></div>
         <div id="top-words">TOP 5: Loading...</div>
-    </div>
+        </div>
 
     <div id="mobile-screen" class="screen">
         <div class="card">
@@ -306,22 +217,16 @@
         </div>
     </div>
 
-    <div id="admin-screen" class="screen">
+    <div id="admin-screen" class="screen" style="justify-content: flex-start; padding-top: 10%;">
         <div class="card" id="admin-login-card">
-            <h1>ADMIN LOGIN</h1>
-            <p class="instruction">請輸入安全密碼以存取中央系統</p>
-            <input type="password" id="admin-pass-input" placeholder="Enter Password...">
-            <button id="submit-btn" onclick="verifyAdminPassword()">UNLOCK SYSTEM</button>
-            <div id="admin-login-msg" style="margin-top:15px; color:red; font-size:0.8rem;"></div>
+            <h1 style="color: var(--black); font-size: 1.5rem; -webkit-text-stroke: 0; text-shadow: none;">ADMIN LOGIN</h1>
+            <input type="password" id="admin-pwd" placeholder="Enter Password..." style="margin-top: 10px;">
+            <button onclick="checkAdminPwd()" style="width: 100%; background-color: var(--bubbles-blue); color: var(--white); -webkit-text-stroke: 1px var(--black);">LOGIN</button>
         </div>
-
-        <div class="admin-box" id="admin-dashboard" style="display: none;">
-            <div class="admin-header">
-                <div class="admin-title">SCM & CS CONTROL PANEL</div>
-                <button id="wipe-btn" onclick="clearCloud()">WIPE DATABASE</button>
-            </div>
-            <p style="font-size:0.8rem; margin-bottom:15px; color:#666;">📊 即時接收紀錄清單 (依字頻排序)：</p>
-            <div class="log-container" id="admin-log-list">
+        <div class="card" id="admin-dashboard-card" style="display: none; max-width: 500px; width: 95%;">
+            <h1 style="color: var(--black); font-size: 1.5rem; -webkit-text-stroke: 0; text-shadow: none; margin-bottom: 20px;">DASHBOARD</h1>
+            <button onclick="clearCloud()" style="width: 100%; background-color: #ff4d4d; color: white; -webkit-text-stroke: 1px var(--black); margin-bottom: 20px;">RESET DATABASE</button>
+            <div id="admin-list-container" style="text-align: left; max-height: 45vh; overflow-y: auto; background: #f0f0f0; border: 3px solid var(--black); border-radius: 15px; padding: 15px; box-shadow: inset 3px 3px 0px rgba(0,0,0,0.1);">
                 </div>
         </div>
     </div>
@@ -334,24 +239,20 @@
 
         let wordCounts = {};
         let currentRole = "audience";
-        let rawDatabaseRows = []; // 存放完整的原始紀錄陣列
 
         function initApp() {
             const urlParams = new URLSearchParams(window.location.search);
             const role = urlParams.get('role');
 
-            if (role === 'input' || role === 'mobile' || (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) && role !== 'display' && role !== 'admin')) {
+            if (role === 'admin') {
+                // 👑 網址包含 ?role=admin 時進入後台模式
+                currentRole = "admin";
+                document.getElementById('admin-screen').classList.add('active');
+                initAudienceCloud(); // 預先載入資料
+            } else if (role === 'input' || role === 'mobile' || (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) && role !== 'display')) {
                 currentRole = "mobile";
                 document.getElementById('mobile-screen').classList.add('active');
                 setupMobileInteractions();
-            } else if (role === 'admin') {
-                // 👑 啟動管理員入口
-                currentRole = "admin";
-                document.getElementById('admin-screen').classList.add('active');
-                // 綁定密碼輸入框的 Enter 鍵防呆
-                document.getElementById('admin-pass-input').addEventListener('keypress', function (e) {
-                    if (e.key === 'Enter') verifyAdminPassword();
-                });
             } else {
                 currentRole = "audience";
                 document.getElementById('audience-screen').classList.add('active');
@@ -359,20 +260,15 @@
             }
         }
 
-        // 👑 密碼驗證邏輯
-        function verifyAdminPassword() {
-            const passInput = document.getElementById('admin-pass-input').value;
-            const loginMsg = document.getElementById('admin-login-msg');
-
-            if (passInput === 'scmscm666666') {
-                // 密碼正確，隱藏登入盒，攤開主控台
+        // 👑 密碼驗證函數
+        function checkAdminPwd() {
+            const pwd = document.getElementById('admin-pwd').value;
+            if (pwd === 'scmscm666666') {
                 document.getElementById('admin-login-card').style.display = 'none';
-                document.getElementById('admin-dashboard').style.display = 'block';
-                // 點火撈取後台資料庫
-                initAudienceCloud();
+                document.getElementById('admin-dashboard-card').style.display = 'block';
             } else {
-                loginMsg.innerText = "🚨 ACCESS DENIED: WRONG PASSWORD!";
-                document.getElementById('admin-pass-input').value = "";
+                alert('Wrong Password!');
+                document.getElementById('admin-pwd').value = '';
             }
         }
 
@@ -388,12 +284,10 @@
                             }
                         });
                     }
-                    // 根據角色渲染：大螢幕畫雲，後台畫列表
-                    if (currentRole === 'admin') {
-                        renderAdminLogs();
-                    } else {
-                        renderCloud();
-                    }
+                    
+                    // 👑 判斷渲染哪種畫面
+                    if (currentRole === 'audience') renderCloud();
+                    else if (currentRole === 'admin') renderAdminList();
                 });
 
             db.channel('schema-db-changes')
@@ -402,47 +296,41 @@
                         const newWord = payload.new.word.toUpperCase().trim();
                         wordCounts[newWord] = (wordCounts[newWord] || 0) + 1;
                         
-                        if (currentRole === 'admin') {
-                            renderAdminLogs();
-                        } else {
-                            renderCloud();
-                        }
+                        if (currentRole === 'audience') renderCloud();
+                        else if (currentRole === 'admin') renderAdminList();
                     }
                 })
                 .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'word_cloud' }, () => {
                     wordCounts = {};
-                    if (currentRole === 'admin') {
-                        renderAdminLogs();
-                    } else {
-                        renderCloud();
-                    }
+                    if (currentRole === 'audience') renderCloud();
+                    else if (currentRole === 'admin') renderAdminList();
                 })
                 .subscribe();
         }
 
-        // 👑 全新渲染：後台專屬即時紀錄列表
-        function renderAdminLogs() {
-            const logListContainer = document.getElementById('admin-log-list');
-            logListContainer.innerHTML = "";
-
+        // 👑 渲染後台清單的專屬函數
+        function renderAdminList() {
+            const listContainer = document.getElementById('admin-list-container');
+            listContainer.innerHTML = '';
+            
             const sortedWords = Object.keys(wordCounts).map(word => ({
                 text: word,
                 size: wordCounts[word]
             })).sort((a, b) => b.size - a.size);
 
             if (sortedWords.length === 0) {
-                logListContainer.innerHTML = "<div style='text-align:center; padding:20px; color:#aaa; font-size:0.8rem;'>AWAITING INCOMING TELEMETRY DATA...</div>";
+                listContainer.innerHTML = "<div style='text-align: center; color: #888; font-weight: bold; margin-top: 10px;'>No data yet.</div>";
                 return;
             }
 
-            sortedWords.forEach(w => {
-                const item = document.createElement('div');
-                item.className = 'log-item';
-                item.innerHTML = `
-                    <span class="log-word-text">${w.text}</span>
-                    <span class="log-count">Count: ${w.size}</span>
+            sortedWords.forEach(item => {
+                const row = document.createElement('div');
+                row.style.cssText = "display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--black); padding: 8px 0; font-size: 1.2rem; color: var(--black);";
+                row.innerHTML = `
+                    <span>${item.text}</span>
+                    <span style="background: var(--blossom-pink); color: var(--white); padding: 2px 10px; border-radius: 10px; border: 2px solid var(--black); font-size: 0.9rem;">${item.size}</span>
                 `;
-                logListContainer.appendChild(item);
+                listContainer.appendChild(row);
             });
         }
 
@@ -578,4 +466,67 @@
                 return;
             }
 
-            top
+            topContainer.innerHTML = "TOP 5: " + sorted.map((w, i) => {
+                const colors = ['#FF3399', '#33CCFF', '#66FF33', '#FF9933', '#B84DFF'];
+                const bg = colors[i % colors.length];
+                return `<span class="top-tag" style="background:${bg}">${w.text} (${w.size})</span>`;
+            }).join(" ");
+        }
+
+        async function sendWord() {
+            const inputElement = document.getElementById('word-input');
+            const feedback     = document.getElementById('feedback-msg');
+            const rawWord      = inputElement.value.trim();
+
+            if (!rawWord) return;
+
+            if (rawWord.split(/\s+/).length > 2) {
+                feedback.style.color = "red";
+                feedback.innerText   = "🚨 太多字囉！最多兩個詞！";
+                return;
+            }
+
+            const lastSubmissionTime = localStorage.getItem('last_sub_time');
+            const cooldownPeriod     = 5000;
+
+            if (lastSubmissionTime && (Date.now() - lastSubmissionTime < cooldownPeriod)) {
+                feedback.style.color = "#FF3399";
+                feedback.innerText   = "⏳ 休息一下，5秒後再傳送！";
+                return;
+            }
+
+            const { error } = await db
+                .from('word_cloud')
+                .insert([{ word: rawWord }]);
+
+            if (!error) {
+                localStorage.setItem('last_sub_time', Date.now());
+                feedback.style.color = "#66FF33";
+                feedback.innerText   = "✨ 成功傳送至小鎮村！";
+                inputElement.value   = "";
+                if (navigator.vibrate) navigator.vibrate(50);
+            } else {
+                feedback.style.color = "red";
+                feedback.innerText   = "❌ 傳送失敗，請再試一次。";
+            }
+        }
+
+        async function clearCloud() {
+            if (confirm("要清空小鎮村的記憶嗎？ (Wipe Database?)")) {
+                await db
+                    .from('word_cloud')
+                    .delete()
+                    .neq('word', 'placeholder_wiping_trick');
+            }
+        }
+
+        function setupMobileInteractions() {
+            document.getElementById('word-input').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') sendWord();
+            });
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
